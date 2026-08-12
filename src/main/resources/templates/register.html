@@ -42,7 +42,7 @@
             <div class="text-danger" th:if="${#fields.hasErrors('role')}" th:errors="*{role}"></div>
         </div>
         <div class="mb-3">
-            <label class="form-label">Blood Group (donors only)</label>
+            <label class="form-label">Blood Group</label>
             <select class="form-select" th:field="*{bloodGroup}">
                 <option value="">-- Select --</option>
                 <option th:each="bg : ${bloodGroups}" th:value="${bg}" th:text="${bg}"></option>

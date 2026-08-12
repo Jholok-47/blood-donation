@@ -2,10 +2,7 @@ package com.lifelink.blood_donation.DTO;
 
 import com.lifelink.blood_donation.Entities.Enums.BloodGroup;
 import com.lifelink.blood_donation.Entities.Enums.Role;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,6 +22,7 @@ public class RegisterRequest {
     private String password;
 
     @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^[0-9+\\-\\s]{7,15}$", message = "Enter a valid phone number")
     private String phone;
 
     @NotNull(message = "Please select whether you are a patient or a donor")

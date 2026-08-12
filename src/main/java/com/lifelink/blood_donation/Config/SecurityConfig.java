@@ -58,7 +58,7 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .authenticationProvider(authenticationProvider())
-                .csrf(csrf -> csrf.disable());
+                //.csrf(csrf -> csrf.disable());
         return http.build();
     }
 
