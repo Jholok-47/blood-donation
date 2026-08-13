@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Assign Donor</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-4">
+    <h2>Assign Donor</h2>
+    <p>
+        Blood group needed: <strong th:text="${request.bloodGroup}"></strong> ·
+        Quantity: <span th:text="${request.quantity}"></span> ·
+        Urgency: <span th:text="${request.urgency}"></span> ·
+        District: <span th:text="${request.district}"></span> ·
+        Status: <span th:text="${request.status}"></span>
+    </p>
+
+    <div th:if="${#lists.isEmpty(compatibleDonors)}" class="alert alert-warning">
+        No verified, available, compatible donors found right now.
+    </div>
+
+    <form th:if="${!#lists.isEmpty(compatibleDonors)}"
+          th:action="${request.status.name() == 'APPROVED'} ? @{/admin/requests/{id}/assign(id=${request.id})} : @{/admin/requests/{id}/reassign(id=${request.id})}"
+          method="post">
+        <table class="table table-striped">
+            <thead>
+            <tr><th></th><th>Name</th><th>Blood Group</th><th>District</th><th>Phone</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="donor : ${compatibleDonors}">
+                <td><input type="radio" name="donorId" th:value="${donor.id}" required></td>
+                <td th:text="${donor.fullName}"></td>
+                <td th:text="${donor.bloodGroup}"></td>
+                <td th:text="${donor.district}"></td>
+                <td th:text="${donor.phone}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary">
+            <span th:text="${request.status.name() == 'APPROVED'} ? 'Assign Selected Donor' : 'Reassign to Selected Donor'"></span>
+        </button>
+    </form>
+
+    <a href="/admin/requests" class="btn btn-secondary mt-3">Back to Requests</a>
+</div>
+</body>
+</html>

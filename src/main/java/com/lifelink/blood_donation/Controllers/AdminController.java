@@ -5,12 +5,14 @@ import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
 import com.lifelink.blood_donation.Services.BloodRequestService;
 import com.lifelink.blood_donation.Services.ProfileService;
+import com.lifelink.blood_donation.Services.RequestAssignService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminController {
 
+    private final RequestAssignService requestAssignService;
     private final ProfileService profileService;
     private final BloodRequestService bloodRequestService;
 
@@ -67,6 +70,40 @@ public class AdminController {
             bloodRequestService.rejectRequest(id);
             redirectAttributes.addFlashAttribute("successMessage", "Request rejected.");
         } catch (ResourceNotFoundException | InvalidOperationException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/requests";
+    }
+
+    // Module 5: Donor assignment management for Admins
+
+    // Shows compatible donors for this request — works for APPROVED (first assign) or ASSIGNED (reassign) requests
+    @GetMapping("/admin/requests/{id}/assign")
+    public String showAssignDonorPage(@PathVariable Long id, Model model) {
+        model.addAttribute("request", bloodRequestService.getRequestById(id));
+        model.addAttribute("compatibleDonors", requestAssignService.getCompatibleDonors(id));
+        return "admin/assign-donor";
+    }
+
+    // First-time assignment for an APPROVED request
+    @PostMapping("/admin/requests/{id}/assign")
+    public String assignDonor(@PathVariable Long id, @RequestParam Long donorId, RedirectAttributes redirectAttributes) {
+        try {
+            requestAssignService.assignDonor(id, donorId);
+            redirectAttributes.addFlashAttribute("successMessage", "Donor assigned successfully");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/requests";
+    }
+
+    // Reassignment for an already-ASSIGNED request (cancels current active assignment, creates a new one)
+    @PostMapping("/admin/requests/{id}/reassign")
+    public String reassignDonor(@PathVariable Long id, @RequestParam Long donorId, RedirectAttributes redirectAttributes) {
+        try {
+            requestAssignService.reassignDonor(id, donorId);
+            redirectAttributes.addFlashAttribute("successMessage", "Donor reassigned successfully");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/requests";

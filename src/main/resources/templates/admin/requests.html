@@ -43,6 +43,13 @@
                         <button type="submit" class="btn btn-sm btn-danger">Reject</button>
                     </form>
                 </div>
+                <!-- link/button on each row so admin can reach the assign page -->
+                <a th:if="${req.status.name() == 'APPROVED'}"
+                   th:href="@{/admin/requests/{id}/assign(id=${req.id})}"
+                   class="btn btn-sm btn-primary">Assign Donor</a>
+                <a th:if="${req.status.name() == 'ASSIGNED'}"
+                   th:href="@{/admin/requests/{id}/assign(id=${req.id})}"
+                   class="btn btn-sm btn-warning">Reassign</a>
             </td>
         </tr>
         </tbody>
