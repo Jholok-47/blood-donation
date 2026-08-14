@@ -50,6 +50,15 @@
                 <a th:if="${req.status.name() == 'ASSIGNED'}"
                    th:href="@{/admin/requests/{id}/assign(id=${req.id})}"
                    class="btn btn-sm btn-warning">Reassign</a>
+                <!-- Module 6: Donation history (button to close an assignment) -->
+                <form th:if="${req.status.name() == 'ASSIGNED'}"
+                      th:action="@{/admin/requests/{id}/complete-donation(id=${req.id})}"
+                      method="post" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-success"
+                            onclick="return confirm('Confirm this donation has been completed?');">
+                        Complete Donation
+                    </button>
+                </form>
             </td>
         </tr>
         </tbody>

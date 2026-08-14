@@ -29,13 +29,18 @@ public class RequestAssignService {
     private final UserRepository userRepository;
 
     // Verified, available donors whose blood group can legally donate to this request's needed blood group
-    public List<User> getCompatibleDonors(Long requestId) {
-        BloodRequest request = bloodRequestRepository.findById(requestId)
+    public List<User> getCompatibleDonors(Long bloodRequestId) {
+        BloodRequest request = bloodRequestRepository.findById(bloodRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Blood request not found"));
 
-        List<BloodGroup> compatibleDonorGroups = BloodCompatibility.getCompatibleDonorGroups(request.getBloodGroup());
+        List<BloodGroup> compatibleGroups = BloodCompatibility.getCompatibleDonorGroups(request.getBloodGroup());
 
-        return userRepository.findByRoleAndBloodGroupInAndVerifiedTrueAndAvailableTrue(Role.DONOR, compatibleDonorGroups);
+        List<User> candidates = userRepository
+                .findByRoleAndBloodGroupInAndVerifiedTrueAndAvailableTrue(Role.DONOR, compatibleGroups);
+
+        return candidates.stream()
+                .filter(User::isEligibleToDonate)
+                .toList();
     }
 
     // First-time assignment: request must be APPROVED, no existing ACTIVE assignment. Moves request to ASSIGNED.

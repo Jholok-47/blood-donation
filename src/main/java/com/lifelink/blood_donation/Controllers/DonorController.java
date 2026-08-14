@@ -1,7 +1,9 @@
 package com.lifelink.blood_donation.Controllers;
 
+import com.lifelink.blood_donation.Entities.DonationHistory;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
+import com.lifelink.blood_donation.Services.DonationHistoryService;
 import com.lifelink.blood_donation.Services.RequestAssignService;
 import com.lifelink.blood_donation.Security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -11,11 +13,14 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
+
 @Controller
 @RequiredArgsConstructor
 public class DonorController {
 
     private final RequestAssignService requestAssignService;
+    private final DonationHistoryService donationHistoryService;
 
     @GetMapping("/donor/assignments")
     public String myAssignments(@AuthenticationPrincipal UserPrincipal principal, Model model) {
@@ -45,5 +50,14 @@ public class DonorController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/donor/assignments";
+    }
+
+     // Module 6: Donation history
+
+    @GetMapping("/donor/donations")
+    public String myDonations(@AuthenticationPrincipal UserPrincipal principal, Model model) {
+        List<DonationHistory> donations = donationHistoryService.getMyDonationHistory(principal.getUser().getId());
+        model.addAttribute("donations", donations);
+        return "donor/my-donations";
     }
 }

@@ -4,6 +4,7 @@ import com.lifelink.blood_donation.Entities.User;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
 import com.lifelink.blood_donation.Services.BloodRequestService;
+import com.lifelink.blood_donation.Services.DonationHistoryService;
 import com.lifelink.blood_donation.Services.ProfileService;
 import com.lifelink.blood_donation.Services.RequestAssignService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class AdminController {
     private final RequestAssignService requestAssignService;
     private final ProfileService profileService;
     private final BloodRequestService bloodRequestService;
+    private final DonationHistoryService donationHistoryService;
 
     //Module 3: User profile management for Admins
     @GetMapping("/admin/donors/unverified")
@@ -103,6 +105,19 @@ public class AdminController {
         try {
             requestAssignService.reassignDonor(id, donorId);
             redirectAttributes.addFlashAttribute("successMessage", "Donor reassigned successfully");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/requests";
+    }
+
+    // Module 6: Donation History
+
+    @PostMapping("/admin/requests/{id}/complete-donation")
+    public String completeDonation(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            donationHistoryService.completeDonation(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Donation marked as completed.");
         } catch (InvalidOperationException | ResourceNotFoundException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }

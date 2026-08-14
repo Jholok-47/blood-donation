@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>My Donations</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+</head>
+<body class="container mt-4">
+<h2>My Donation History</h2>
+
+<table class="table table-bordered mt-3" th:if="${!donations.isEmpty()}">
+    <thead>
+    <tr>
+        <th>Date</th>
+        <th>Quantity</th>
+        <th>Patient</th>
+        <th>Blood Group</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="d : ${donations}">
+        <td th:text="${d.donationDate}"></td>
+        <td th:text="${d.quantity}"></td>
+        <td th:text="${d.patient.fullName}"></td>
+        <td th:text="${d.bloodRequest.bloodGroup}"></td>
+    </tr>
+    </tbody>
+</table>
+
+<p th:if="${donations.isEmpty()}" class="text-muted">No completed donations yet.</p>
+</body>
+</html>
