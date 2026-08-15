@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/donor/**").hasRole("DONOR")
                         .requestMatchers("/patient/**").hasRole("PATIENT")
+                        .requestMatchers("/search/donors").hasAnyRole("PATIENT", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form

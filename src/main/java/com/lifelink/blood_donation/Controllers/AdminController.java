@@ -1,12 +1,11 @@
 package com.lifelink.blood_donation.Controllers;
 
+import com.lifelink.blood_donation.Entities.Enums.RequestStatus;
+import com.lifelink.blood_donation.Entities.Enums.UrgencyLevel;
 import com.lifelink.blood_donation.Entities.User;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
-import com.lifelink.blood_donation.Services.BloodRequestService;
-import com.lifelink.blood_donation.Services.DonationHistoryService;
-import com.lifelink.blood_donation.Services.ProfileService;
-import com.lifelink.blood_donation.Services.RequestAssignService;
+import com.lifelink.blood_donation.Services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,6 +25,7 @@ public class AdminController {
     private final ProfileService profileService;
     private final BloodRequestService bloodRequestService;
     private final DonationHistoryService donationHistoryService;
+    private final SearchService searchService;
 
     //Module 3: User profile management for Admins
     @GetMapping("/admin/donors/unverified")
@@ -48,10 +48,15 @@ public class AdminController {
 
     // Module 4: Blood request management for Admins
     // Add this field (constructor injection via @RequiredArgsConstructor, same pattern as existing fields)
-
     @GetMapping("/admin/requests")
-    public String viewRequests(Model model) {
-        model.addAttribute("requests", bloodRequestService.getAllRequests());
+    public String viewRequests(@RequestParam(required = false) RequestStatus status,
+                               @RequestParam(required = false) UrgencyLevel urgency,
+                               Model model) {
+        model.addAttribute("statuses", RequestStatus.values());
+        model.addAttribute("urgencyLevels", UrgencyLevel.values());
+        model.addAttribute("selectedStatus", status);
+        model.addAttribute("selectedUrgency", urgency);
+        model.addAttribute("requests", searchService.filterRequests(status, urgency));
         return "admin/requests";
     }
 

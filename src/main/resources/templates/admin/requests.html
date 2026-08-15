@@ -12,6 +12,31 @@
     <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
     <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
 
+    <!--Filter form for status and urgency-->
+    <form method="get" th:action="@{/admin/requests}" class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
+                        th:selected="${s == selectedStatus}"></option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Urgency</label>
+            <select name="urgency" class="form-select">
+                <option value="">All</option>
+                <option th:each="u : ${urgencyLevels}" th:value="${u}" th:text="${u}"
+                        th:selected="${u == selectedUrgency}"></option>
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a th:href="@{/admin/requests}" class="btn btn-outline-secondary ms-2">Clear</a>
+        </div>
+    </form>
+
+    <!-- Table of requests with actions based on status -->
     <table class="table table-bordered" th:if="${!requests.isEmpty()}">
         <thead>
         <tr>

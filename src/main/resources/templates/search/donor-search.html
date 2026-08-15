@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Search Donors</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"></head>
+<body class="container mt-4">
+
+<h2>Search Donors</h2>
+
+<form method="get" th:action="@{/search/donors}" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <label class="form-label">Blood Group</label>
+        <select name="bloodGroup" class="form-select">
+            <option value="">Any</option>
+            <option th:each="bg : ${bloodGroups}"
+                    th:value="${bg}" th:text="${bg}"
+                    th:selected="${bg == selectedBloodGroup}"></option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">District</label>
+        <input type="text" name="district" class="form-control" th:value="${selectedDistrict}"/>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+<table class="table table-striped" th:if="${not #lists.isEmpty(donors)}">
+    <thead>
+    <tr><th>Name</th><th>Blood Group</th><th>District</th><th>Phone</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="d : ${donors}">
+        <td th:text="${d.fullName}"></td>
+        <td th:text="${d.bloodGroup}"></td>
+        <td th:text="${d.district}"></td>
+        <td th:text="${d.phone}"></td>
+    </tr>
+    </tbody>
+</table>
+<p th:if="${#lists.isEmpty(donors)}">No matching donors found.</p>
+
+</body>
+</html>
