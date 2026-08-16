@@ -84,6 +84,15 @@
                         Complete Donation
                     </button>
                 </form>
+                <!-- Cancel current assignment, revert request to Approved — no new donor chosen -->
+                <form th:if="${req.status.name() == 'ASSIGNED'}"
+                      th:action="@{/admin/requests/{id}/cancel-assignment(id=${req.id})}"
+                      method="post" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-secondary"
+                            onclick="return confirm('Cancel this assignment and revert the request to Approved?');">
+                        Cancel Assignment
+                    </button>
+                </form>
             </td>
         </tr>
         </tbody>

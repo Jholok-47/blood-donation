@@ -9,36 +9,54 @@
 <div class="container mt-4">
     <h2>Assign Donor</h2>
     <p>
-        Blood group needed: <strong th:text="${request.bloodGroup}"></strong> ·
-        Quantity: <span th:text="${request.quantity}"></span> ·
-        Urgency: <span th:text="${request.urgency}"></span> ·
-        District: <span th:text="${request.district}"></span> ·
-        Status: <span th:text="${request.status}"></span>
+        Blood group needed: <strong th:text="${bloodRequest.bloodGroup}"></strong> ·
+        Quantity: <span th:text="${bloodRequest.quantity}"></span> ·
+        Urgency: <span th:text="${bloodRequest.urgency}"></span> ·
+        District: <span th:text="${bloodRequest.district}"></span> ·
+        Status: <span th:text="${bloodRequest.status}"></span>
     </p>
 
-    <div th:if="${#lists.isEmpty(compatibleDonors)}" class="alert alert-warning">
+    <div th:if="${#lists.isEmpty(rankedDonors)}" class="alert alert-warning">
         No verified, available, compatible donors found right now.
     </div>
 
-    <form th:if="${!#lists.isEmpty(compatibleDonors)}"
-          th:action="${request.status.name() == 'APPROVED'} ? @{/admin/requests/{id}/assign(id=${request.id})} : @{/admin/requests/{id}/reassign(id=${request.id})}"
+    <form th:if="${!#lists.isEmpty(rankedDonors)}"
+          th:action="${bloodRequest.status.name() == 'APPROVED'} ? @{/admin/requests/{id}/assign(id=${bloodRequest.id})} : @{/admin/requests/{id}/reassign(id=${bloodRequest.id})}"
           method="post">
         <table class="table table-striped">
             <thead>
-            <tr><th></th><th>Name</th><th>Blood Group</th><th>District</th><th>Phone</th></tr>
+            <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Blood Group</th>
+                <th>District</th>
+                <th>Score</th>
+                <th title="Proximity / Reliability / Recency">Breakdown</th>
+            </tr>
             </thead>
             <tbody>
-            <tr th:each="donor : ${compatibleDonors}">
-                <td><input type="radio" name="donorId" th:value="${donor.id}" required></td>
-                <td th:text="${donor.fullName}"></td>
-                <td th:text="${donor.bloodGroup}"></td>
-                <td th:text="${donor.district}"></td>
-                <td th:text="${donor.phone}"></td>
+            <tr th:each="ranked, iterStat : ${rankedDonors}">
+                <td>
+                    <input type="radio" name="donorId" th:value="${ranked.donor.id}" th:checked="${iterStat.index == 0}" />
+                </td>
+                <td th:text="${ranked.donor.fullName}"></td>
+                <td th:text="${ranked.donor.bloodGroup}"></td>
+                <td th:text="${ranked.donor.district}"></td>
+                <td>
+                    <span class="badge bg-primary" th:text="${ranked.score.totalScore}"></span>
+                </td>
+                <td>
+                    <small class="text-muted">
+                        P: <span th:text="${ranked.score.proximityScore}"></span> ·
+                        R: <span th:text="${ranked.score.reliabilityScore}"></span> ·
+                        T: <span th:text="${ranked.score.recencyScore}"></span>
+                    </small>
+                </td>
             </tr>
             </tbody>
         </table>
         <button type="submit" class="btn btn-primary">
-            <span th:text="${request.status.name() == 'APPROVED'} ? 'Assign Selected Donor' : 'Reassign to Selected Donor'"></span>
+            <span th:text="${bloodRequest.status.name() == 'APPROVED'} ? 'Assign Selected Donor' : 'Reassign to Selected Donor'"></span>
         </button>
     </form>
 

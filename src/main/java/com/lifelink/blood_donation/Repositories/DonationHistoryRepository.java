@@ -9,4 +9,7 @@ public interface DonationHistoryRepository extends JpaRepository<DonationHistory
 
     // Powers the donor's "My Donations" history page
     List<DonationHistory> findByDonorIdOrderByDonationDateDesc(Long donorId);
+
+    // Needed to count a donor's past completed donations for the reliability factor.
+    long countByDonorId(Long donorId);
 }

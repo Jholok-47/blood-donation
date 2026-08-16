@@ -1,5 +1,7 @@
 package com.lifelink.blood_donation.Controllers;
 
+import com.lifelink.blood_donation.DTO.RankedDonorDto;
+import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.Enums.RequestStatus;
 import com.lifelink.blood_donation.Entities.Enums.UrgencyLevel;
 import com.lifelink.blood_donation.Entities.User;
@@ -87,8 +89,10 @@ public class AdminController {
     // Shows compatible donors for this request — works for APPROVED (first assign) or ASSIGNED (reassign) requests
     @GetMapping("/admin/requests/{id}/assign")
     public String showAssignDonorPage(@PathVariable Long id, Model model) {
-        model.addAttribute("request", bloodRequestService.getRequestById(id));
-        model.addAttribute("compatibleDonors", requestAssignService.getCompatibleDonors(id));
+        BloodRequest request = bloodRequestService.getRequestById(id);
+        List<RankedDonorDto> rankedDonors = requestAssignService.getRankedCompatibleDonors(id);
+        model.addAttribute("bloodRequest", request);
+        model.addAttribute("rankedDonors", rankedDonors);
         return "admin/assign-donor";
     }
 
@@ -110,6 +114,18 @@ public class AdminController {
         try {
             requestAssignService.reassignDonor(id, donorId);
             redirectAttributes.addFlashAttribute("successMessage", "Donor reassigned successfully");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/requests";
+    }
+
+    // Cancels the current active assignment on an ASSIGNED request, reverting it back to APPROVED — no new donor required
+    @PostMapping("/admin/requests/{id}/cancel-assignment")
+    public String cancelAssignment(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            requestAssignService.cancelAssignment(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Assignment cancelled, request reverted to Approved");
         } catch (InvalidOperationException | ResourceNotFoundException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }

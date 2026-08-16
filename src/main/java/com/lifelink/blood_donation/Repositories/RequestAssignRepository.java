@@ -14,4 +14,9 @@ public interface RequestAssignRepository extends JpaRepository<RequestAssign, Lo
 
     // Donor's "my assignments" view, most recent first
     List<RequestAssign> findByDonorIdOrderByCreatedAtDesc(Long donorId);
+
+    // Needed to count a donor's past declines for the reliability factor.
+    long countByDonorIdAndStatus(Long donorId, AssignStatus status);
+
+    List<RequestAssign> findByStatus(AssignStatus status);
 }

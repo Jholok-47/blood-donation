@@ -1,5 +1,7 @@
 package com.lifelink.blood_donation.Services;
 
+import com.lifelink.blood_donation.DTO.DonorScoreBreakdown;
+import com.lifelink.blood_donation.DTO.RankedDonorDto;
 import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.RequestAssign;
 import com.lifelink.blood_donation.Entities.User;
@@ -10,25 +12,31 @@ import com.lifelink.blood_donation.Entities.Enums.Role;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
 import com.lifelink.blood_donation.Repositories.BloodRequestRepository;
+import com.lifelink.blood_donation.Repositories.DonationHistoryRepository;
 import com.lifelink.blood_donation.Repositories.RequestAssignRepository;
 import com.lifelink.blood_donation.Repositories.UserRepository;
 import com.lifelink.blood_donation.Utils.BloodCompatibility;
+import com.lifelink.blood_donation.Utils.DonorScoring;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class RequestAssignService {
 
+    private final DonationHistoryRepository donationHistoryRepository;
     private final RequestAssignRepository requestAssignRepository;
     private final BloodRequestRepository bloodRequestRepository;
     private final UserRepository userRepository;
 
-    // Verified, available donors whose blood group can legally donate to this request's needed blood group
+    // Verified, available donors whose blood group can legally donate to only one request's blood group.
     public List<User> getCompatibleDonors(Long bloodRequestId) {
         BloodRequest request = bloodRequestRepository.findById(bloodRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Blood request not found"));
@@ -38,8 +46,14 @@ public class RequestAssignService {
         List<User> candidates = userRepository
                 .findByRoleAndBloodGroupInAndVerifiedTrueAndAvailableTrue(Role.DONOR, compatibleGroups);
 
+        // Donors already committed to another active assignment are not compatible right now
+        Set<Long> busyDonorIds = requestAssignRepository.findByStatus(AssignStatus.ACTIVE).stream()
+                .map(ra -> ra.getDonor().getId())
+                .collect(Collectors.toSet());
+
         return candidates.stream()
                 .filter(User::isEligibleToDonate)
+                .filter(donor -> !busyDonorIds.contains(donor.getId()))
                 .toList();
     }
 
@@ -122,6 +136,23 @@ public class RequestAssignService {
         bloodRequestRepository.save(request);
     }
 
+    // Admin can cancel an assignment.
+    @Transactional
+    public void cancelAssignment(Long requestId) {
+        BloodRequest request = bloodRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Blood request not found"));
+
+        RequestAssign activeAssign = requestAssignRepository.findByBloodRequestIdAndStatus(requestId, AssignStatus.ACTIVE)
+                .orElseThrow(() -> new InvalidOperationException("No active assignment to cancel"));
+
+        activeAssign.setStatus(AssignStatus.CANCELLED);
+        activeAssign.setRespondedAt(LocalDateTime.now());
+        requestAssignRepository.save(activeAssign);
+
+        request.setStatus(RequestStatus.APPROVED);
+        bloodRequestRepository.save(request);
+    }
+
     public List<RequestAssign> getMyAssignments(Long donorId) {
         return requestAssignRepository.findByDonorIdOrderByCreatedAtDesc(donorId);
     }
@@ -137,5 +168,23 @@ public class RequestAssignService {
             throw new InvalidOperationException("Only ACTIVE assignments can be responded to");
         }
         return assign;
+    }
+
+    // Module 8: AI scoring of compatible donors. Returns a list of RankedDonorDto, sorted by total score descending.
+    public List<RankedDonorDto> getRankedCompatibleDonors(Long bloodRequestId) {
+        BloodRequest request = bloodRequestRepository.findById(bloodRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Blood request not found"));
+
+        List<User> compatibleDonors = getCompatibleDonors(bloodRequestId); // unchanged base filter
+
+        return compatibleDonors.stream()
+                .map(donor -> {
+                    long completed = donationHistoryRepository.countByDonorId(donor.getId());
+                    long declined = requestAssignRepository.countByDonorIdAndStatus(donor.getId(), AssignStatus.DECLINED);
+                    DonorScoreBreakdown score = DonorScoring.score(donor, request, completed, declined);
+                    return new RankedDonorDto(donor, score);
+                })
+                .sorted(Comparator.comparingDouble((RankedDonorDto d) -> d.getScore().getTotalScore()).reversed())
+                .toList();
     }
 }
