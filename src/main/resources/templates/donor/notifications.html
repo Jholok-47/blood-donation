@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>My Notifications</title></head>
+<body>
+<div class="container mt-4">
+    <h2>My Notifications</h2>
+
+    <table class="table" th:if="${not #lists.isEmpty(notifications)}">
+        <thead>
+        <tr><th>Message</th><th>Type</th><th>Received</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="n : ${notifications}" th:classappend="${!n.read} ? 'table-warning' : ''">
+            <td th:text="${n.message}"></td>
+            <td th:text="${n.type}"></td>
+            <td th:text="${n.createdAt}"></td>
+            <td>
+                <form th:if="${!n.read}" th:action="@{/donor/notifications/{id}/read(id=${n.id})}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Mark as read</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${#lists.isEmpty(notifications)}">No notifications yet.</p>
+</div>
+</body>
+</html>

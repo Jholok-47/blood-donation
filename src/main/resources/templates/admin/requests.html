@@ -46,6 +46,7 @@
             <th>Urgency</th>
             <th>District</th>
             <th>Status</th>
+            <th>Assigned Donor</th>
             <th>Submitted</th>
             <th>Actions</th>
         </tr>
@@ -58,6 +59,7 @@
             <td th:text="${req.urgency}"></td>
             <td th:text="${req.district}"></td>
             <td th:text="${req.status}"></td>
+            <td th:text="${assignedDonorNames.get(req.id)}"></td>
             <td th:text="${#temporals.format(req.createdAt, 'dd MMM yyyy HH:mm')}"></td>
             <td>
                 <div th:if="${req.status.name() == 'PENDING'}">

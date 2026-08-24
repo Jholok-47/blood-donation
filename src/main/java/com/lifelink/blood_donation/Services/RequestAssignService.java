@@ -3,12 +3,9 @@ package com.lifelink.blood_donation.Services;
 import com.lifelink.blood_donation.DTO.DonorScoreBreakdown;
 import com.lifelink.blood_donation.DTO.RankedDonorDto;
 import com.lifelink.blood_donation.Entities.BloodRequest;
+import com.lifelink.blood_donation.Entities.Enums.*;
 import com.lifelink.blood_donation.Entities.RequestAssign;
 import com.lifelink.blood_donation.Entities.User;
-import com.lifelink.blood_donation.Entities.Enums.AssignStatus;
-import com.lifelink.blood_donation.Entities.Enums.BloodGroup;
-import com.lifelink.blood_donation.Entities.Enums.RequestStatus;
-import com.lifelink.blood_donation.Entities.Enums.Role;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
 import com.lifelink.blood_donation.Repositories.BloodRequestRepository;
@@ -22,9 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +29,7 @@ public class RequestAssignService {
     private final DonationHistoryRepository donationHistoryRepository;
     private final RequestAssignRepository requestAssignRepository;
     private final BloodRequestRepository bloodRequestRepository;
+    private final NotificationService notificationService;
     private final UserRepository userRepository;
 
     // Verified, available donors whose blood group can legally donate to only one request's blood group.
@@ -85,6 +81,12 @@ public class RequestAssignService {
                 .build();
         requestAssignRepository.save(assign);
 
+        notificationService.notify(
+                donor, request, assign, NotificationType.ASSIGNMENT,
+                "You've been assigned to a " + request.getBloodGroup() +
+                        " request in " + request.getDistrict() + ". Please accept or decline."
+        );
+
         request.setStatus(RequestStatus.ASSIGNED);
         bloodRequestRepository.save(request);
     }
@@ -113,6 +115,12 @@ public class RequestAssignService {
                 .assignedAt(LocalDateTime.now())
                 .build();
         requestAssignRepository.save(newAssign);
+
+        notificationService.notify(
+                newDonor, request, newAssign, NotificationType.CASCADE_REASSIGNED,
+                "You've been assigned to a " + request.getBloodGroup() +
+                        " request in " + request.getDistrict() + " (reassigned by admin)."
+        );
     }
 
     // Donor accepts — just records the response timestamp, stays ACTIVE until donation is completed (Module 6)
@@ -131,9 +139,7 @@ public class RequestAssignService {
         assign.setRespondedAt(LocalDateTime.now());
         requestAssignRepository.save(assign);
 
-        BloodRequest request = assign.getBloodRequest();
-        request.setStatus(RequestStatus.APPROVED);
-        bloodRequestRepository.save(request);
+        cascadeToNextDonor(assign.getBloodRequest());
     }
 
     // Admin can cancel an assignment.
@@ -186,5 +192,85 @@ public class RequestAssignService {
                 })
                 .sorted(Comparator.comparingDouble((RankedDonorDto d) -> d.getScore().getTotalScore()).reversed())
                 .toList();
+    }
+
+    // Module 9: Notification methods
+    private void cascadeToNextDonor(BloodRequest bloodRequest) {
+        boolean alreadyHasActive = requestAssignRepository
+                .findByBloodRequestIdAndStatus(bloodRequest.getId(), AssignStatus.ACTIVE)
+                .isPresent();
+        if (alreadyHasActive) {
+            return;
+        }
+
+        // Exclude donors who already declined OR were cancelled-out (e.g. via timeout)
+        // on THIS request, so they aren't re-offered it in the same cascade chain.
+        List<RequestAssign> exhausted = requestAssignRepository
+                .findAllByBloodRequestIdAndStatusIn(
+                        bloodRequest.getId(),
+                        List.of(AssignStatus.DECLINED, AssignStatus.CANCELLED)
+                );
+        Set<Long> excludedDonorIds = exhausted.stream()
+                .map(ra -> ra.getDonor().getId())
+                .collect(Collectors.toSet());
+
+        List<RankedDonorDto> candidates = getRankedCompatibleDonors(bloodRequest.getId()).stream()
+                .filter(rd -> !excludedDonorIds.contains(rd.getDonor().getId()))
+                .toList();
+
+        if (candidates.isEmpty()) {
+            bloodRequest.setStatus(RequestStatus.APPROVED);
+            bloodRequestRepository.save(bloodRequest);
+            return;
+        }
+
+        User nextDonor = candidates.get(0).getDonor();
+        RequestAssign newAssign = RequestAssign.builder()
+                .bloodRequest(bloodRequest)
+                .donor(nextDonor)
+                .status(AssignStatus.ACTIVE)
+                .assignedAt(LocalDateTime.now())
+                .build();
+        requestAssignRepository.save(newAssign);
+
+        bloodRequest.setStatus(RequestStatus.ASSIGNED);
+        bloodRequestRepository.save(bloodRequest);
+
+        notificationService.notify(
+                nextDonor, bloodRequest, newAssign, NotificationType.CASCADE_REASSIGNED,
+                "You've been auto-assigned to a " + bloodRequest.getBloodGroup() +
+                        " request in " + bloodRequest.getDistrict() + " after the previous donor didn't respond."
+        );
+    }
+
+    @Transactional
+    public void cascadeStaleAssignments(int windowMinutes) {
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(windowMinutes);
+        List<RequestAssign> stale = requestAssignRepository
+                .findByStatusAndRespondedAtIsNullAndAssignedAtBefore(AssignStatus.ACTIVE, threshold);
+
+        for (RequestAssign requestAssign : stale) {
+            requestAssign.setStatus(AssignStatus.CANCELLED);
+            requestAssign.setRespondedAt(LocalDateTime.now());
+            requestAssignRepository.save(requestAssign);
+            cascadeToNextDonor(requestAssign.getBloodRequest());
+        }
+    }
+
+    // Module 9 follow-up: donor name to show in the admin requests table.
+// Only ACTIVE or COMPLETED rows are "the" donor for a request — declined/cancelled
+// rows are history, not the current occupant of this column.
+    public Map<Long, String> getCurrentDonorNamesByRequestId(List<Long> requestIds) {
+        if (requestIds.isEmpty()) {
+            return Map.of();
+        }
+        List<RequestAssign> relevant = requestAssignRepository.findByBloodRequestIdInAndStatusIn(
+                requestIds, List.of(AssignStatus.ACTIVE, AssignStatus.COMPLETED)
+        );
+        return relevant.stream()
+                .collect(Collectors.toMap(
+                        ra -> ra.getBloodRequest().getId(),
+                        ra -> ra.getDonor().getFullName()
+                ));
     }
 }

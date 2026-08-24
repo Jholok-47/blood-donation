@@ -4,6 +4,7 @@ import com.lifelink.blood_donation.Entities.DonationHistory;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
 import com.lifelink.blood_donation.Services.DonationHistoryService;
+import com.lifelink.blood_donation.Services.NotificationService;
 import com.lifelink.blood_donation.Services.RequestAssignService;
 import com.lifelink.blood_donation.Security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DonorController {
 
+    private final NotificationService notificationService;
     private final RequestAssignService requestAssignService;
     private final DonationHistoryService donationHistoryService;
 
@@ -59,5 +61,25 @@ public class DonorController {
         List<DonationHistory> donations = donationHistoryService.getMyDonationHistory(principal.getUser().getId());
         model.addAttribute("donations", donations);
         return "donor/my-donations";
+    }
+
+    // Module 9: Notifications
+
+    @GetMapping("/donor/notifications")
+    public String viewNotifications(@AuthenticationPrincipal UserPrincipal principal, Model model) {
+        model.addAttribute("notifications", notificationService.getMyNotifications(principal.getUser().getId()));
+        return "donor/notifications";
+    }
+
+    @PostMapping("/donor/notifications/{id}/read")
+    public String markNotificationRead(@PathVariable Long id,
+                                       @AuthenticationPrincipal UserPrincipal principal,
+                                       RedirectAttributes redirectAttributes) {
+        try {
+            notificationService.markAsRead(id, principal.getUser().getId());
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/donor/notifications";
     }
 }

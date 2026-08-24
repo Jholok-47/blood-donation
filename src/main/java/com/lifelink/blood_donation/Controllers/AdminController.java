@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequiredArgsConstructor
@@ -54,11 +55,15 @@ public class AdminController {
     public String viewRequests(@RequestParam(required = false) RequestStatus status,
                                @RequestParam(required = false) UrgencyLevel urgency,
                                Model model) {
+        List<BloodRequest> requests = searchService.filterRequests(status, urgency);
+
+        List<Long> requestIds = requests.stream().map(BloodRequest::getId).toList();
+        Map<Long, String> assignedDonorNames = requestAssignService.getCurrentDonorNamesByRequestId(requestIds);
+
+        model.addAttribute("requests", requests);
+        model.addAttribute("assignedDonorNames", assignedDonorNames);
         model.addAttribute("statuses", RequestStatus.values());
         model.addAttribute("urgencyLevels", UrgencyLevel.values());
-        model.addAttribute("selectedStatus", status);
-        model.addAttribute("selectedUrgency", urgency);
-        model.addAttribute("requests", searchService.filterRequests(status, urgency));
         return "admin/requests";
     }
 

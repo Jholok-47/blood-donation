@@ -4,6 +4,7 @@ import com.lifelink.blood_donation.Entities.Enums.AssignStatus;
 import com.lifelink.blood_donation.Entities.RequestAssign;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +20,12 @@ public interface RequestAssignRepository extends JpaRepository<RequestAssign, Lo
     long countByDonorIdAndStatus(Long donorId, AssignStatus status);
 
     List<RequestAssign> findByStatus(AssignStatus status);
+
+    List<RequestAssign> findByStatusAndRespondedAtIsNullAndAssignedAtBefore(AssignStatus status, LocalDateTime threshold);
+
+    List<RequestAssign> findAllByBloodRequestIdAndStatus(Long bloodRequestId, AssignStatus status);
+
+    List<RequestAssign> findAllByBloodRequestIdAndStatusIn(Long bloodRequestId, List<AssignStatus> statuses);
+
+    List<RequestAssign> findByBloodRequestIdInAndStatusIn(List<Long> bloodRequestIds, List<AssignStatus> statuses);
 }
