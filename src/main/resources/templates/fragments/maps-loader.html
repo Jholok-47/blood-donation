@@ -1,0 +1,46 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="mapsLoader(apiKey)">
+    <div th:if="${apiKey == null or #strings.isEmpty(apiKey)}" class="alert alert-warning">
+        Map view unavailable — Google Maps API key is not configured.
+    </div>
+    <th:block th:if="${apiKey != null and !#strings.isEmpty(apiKey)}">
+        <script th:inline="javascript">
+            function initLifelinkMaps() {
+                (window.lifelinkMapConfigs || []).forEach(function (cfg) {
+                    var el = document.getElementById(cfg.mapId);
+                    if (!el) return;
+
+                    var center = {
+                        lat: cfg.centerLat != null ? cfg.centerLat : 23.8103,
+                        lng: cfg.centerLng != null ? cfg.centerLng : 90.4125
+                    };
+
+                    var map = new google.maps.Map(el, { zoom: cfg.zoom, center: center });
+
+                    if (cfg.showCenterMarker && cfg.centerLat != null && cfg.centerLng != null) {
+                        new google.maps.Marker({
+                            position: center,
+                            map: map,
+                            title: 'Patient location',
+                            icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                        });
+                    }
+
+                    cfg.markers.forEach(function (m) {
+                        if (m.latitude == null || m.longitude == null) return;
+                        var marker = new google.maps.Marker({
+                            position: { lat: m.latitude, lng: m.longitude },
+                            map: map,
+                            title: m.fullName
+                        });
+                        var info = new google.maps.InfoWindow({
+                            content: '<strong>' + m.fullName + '</strong><br>' +
+                                m.bloodGroup + ' &middot; ' + m.district + '<br>' + m.phone
+                        });
+                        marker.addListener('click', function () { info.open(map, marker); });
+                    });
+                });
+            }
+        </script>
+        <script th:src="@{'https://maps.googleapis.com/maps/api/js?key=' + ${apiKey} + '&callback=initLifelinkMaps'}" async defer></script>
+    </th:block>
+</div>

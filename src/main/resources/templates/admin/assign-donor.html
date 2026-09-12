@@ -23,6 +23,8 @@
     <form th:if="${!#lists.isEmpty(rankedDonors)}"
           th:action="${bloodRequest.status.name() == 'APPROVED'} ? @{/admin/requests/{id}/assign(id=${bloodRequest.id})} : @{/admin/requests/{id}/reassign(id=${bloodRequest.id})}"
           method="post">
+        <h5 class="mt-4">Donor Locations</h5>
+        <div th:replace="~{fragments/map :: donorMap(markers=${donorMarkers}, centerLat=${requestLat}, centerLng=${requestLng}, zoom=${defaultZoom}, mapId='assignDonorMap', showCenterMarker=true)}"></div>
         <table class="table table-striped">
             <thead>
             <tr>
@@ -58,6 +60,7 @@
         <button type="submit" class="btn btn-primary">
             <span th:text="${bloodRequest.status.name() == 'APPROVED'} ? 'Assign Selected Donor' : 'Reassign to Selected Donor'"></span>
         </button>
+        <div th:replace="~{fragments/maps-loader :: mapsLoader(apiKey=${mapsApiKey})}"></div>
     </form>
 
     <a href="/admin/requests" class="btn btn-secondary mt-3">Back to Requests</a>

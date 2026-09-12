@@ -25,6 +25,8 @@
     </div>
 </form>
 
+<h5 class="mt-4">Donor Locations</h5>
+<div th:replace="~{fragments/map :: donorMap(markers=${donorMarkers}, centerLat=${defaultLat}, centerLng=${defaultLng}, zoom=${defaultZoom}, mapId='searchDonorMap', showCenterMarker=false)}"></div>
 <table class="table table-striped" th:if="${not #lists.isEmpty(donors)}">
     <thead>
     <tr><th>Name</th><th>Blood Group</th><th>District</th><th>Phone</th></tr>
@@ -39,6 +41,7 @@
     </tbody>
 </table>
 <p th:if="${#lists.isEmpty(donors)}">No matching donors found.</p>
+<div th:replace="~{fragments/maps-loader :: mapsLoader(apiKey=${mapsApiKey})}"></div>
 
 </body>
 </html>

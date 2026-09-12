@@ -1,5 +1,6 @@
 package com.lifelink.blood_donation.Controllers;
 
+import com.lifelink.blood_donation.Config.GoogleMapsProperties;
 import com.lifelink.blood_donation.DTO.RankedDonorDto;
 import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.Enums.RequestStatus;
@@ -29,6 +30,7 @@ public class AdminController {
     private final BloodRequestService bloodRequestService;
     private final DonationHistoryService donationHistoryService;
     private final SearchService searchService;
+    private final GoogleMapsProperties googleMapsProperties;
 
     //Module 3: User profile management for Admins
     @GetMapping("/admin/donors/unverified")
@@ -98,6 +100,13 @@ public class AdminController {
         List<RankedDonorDto> rankedDonors = requestAssignService.getRankedCompatibleDonors(id);
         model.addAttribute("bloodRequest", request);
         model.addAttribute("rankedDonors", rankedDonors);
+        model.addAttribute("mapsApiKey", googleMapsProperties.getApiKey());
+        model.addAttribute("donorMarkers", requestAssignService.toDonorMapMarkers(rankedDonors));
+        model.addAttribute("requestLat", request.getPatient().getLatitude());
+        model.addAttribute("requestLng", request.getPatient().getLongitude());
+        model.addAttribute("defaultLat", googleMapsProperties.getDefaultLat());
+        model.addAttribute("defaultLng", googleMapsProperties.getDefaultLng());
+        model.addAttribute("defaultZoom", googleMapsProperties.getDefaultZoom());
         return "admin/assign-donor";
     }
 

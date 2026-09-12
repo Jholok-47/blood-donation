@@ -1,5 +1,6 @@
 package com.lifelink.blood_donation.Services;
 
+import com.lifelink.blood_donation.DTO.DonorMapMarkerDto;
 import com.lifelink.blood_donation.DTO.DonorScoreBreakdown;
 import com.lifelink.blood_donation.DTO.RankedDonorDto;
 import com.lifelink.blood_donation.Entities.BloodRequest;
@@ -191,6 +192,21 @@ public class RequestAssignService {
                     return new RankedDonorDto(donor, score);
                 })
                 .sorted(Comparator.comparingDouble((RankedDonorDto d) -> d.getScore().getTotalScore()).reversed())
+                .toList();
+    }
+
+    // used to feed the assign-donor page's map.
+    public List<DonorMapMarkerDto> toDonorMapMarkers(List<RankedDonorDto> rankedDonors) {
+        return rankedDonors.stream()
+                .map(rd -> DonorMapMarkerDto.builder()
+                        .donorId(rd.getDonor().getId())
+                        .fullName(rd.getDonor().getFullName())
+                        .bloodGroup(rd.getDonor().getBloodGroup().name())
+                        .district(rd.getDonor().getDistrict())
+                        .phone(rd.getDonor().getPhone())
+                        .latitude(rd.getDonor().getLatitude())
+                        .longitude(rd.getDonor().getLongitude())
+                        .build())
                 .toList();
     }
 

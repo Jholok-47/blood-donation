@@ -1,5 +1,6 @@
 package com.lifelink.blood_donation.Services;
 
+import com.lifelink.blood_donation.DTO.DonorMapMarkerDto;
 import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.User;
 import com.lifelink.blood_donation.Entities.Enums.BloodGroup;
@@ -34,6 +35,20 @@ public class SearchService {
         // RequestAssignService.getCompatibleDonors() (Module 6 precedent).
         return userRepository.findAll(spec).stream()
                 .filter(User::isEligibleToDonate)
+                .toList();
+    }
+
+    public List<DonorMapMarkerDto> toDonorMapMarkers(List<User> donors) {
+        return donors.stream()
+                .map(d -> DonorMapMarkerDto.builder()
+                        .donorId(d.getId())
+                        .fullName(d.getFullName())
+                        .bloodGroup(d.getBloodGroup().name())
+                        .district(d.getDistrict())
+                        .phone(d.getPhone())
+                        .latitude(d.getLatitude())
+                        .longitude(d.getLongitude())
+                        .build())
                 .toList();
     }
 

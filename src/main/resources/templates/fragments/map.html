@@ -1,0 +1,25 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="donorMap(markers, centerLat, centerLng, zoom, mapId, showCenterMarker)">
+    <div th:id="${mapId}" style="width: 100%; height: 400px; border-radius: 8px; background: #f0f0f0;"></div>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function () {
+            var markers = /*[[${markers}]]*/ [];
+            var centerLat = /*[[${centerLat}]]*/ null;
+            var centerLng = /*[[${centerLng}]]*/ null;
+            var zoom = /*[[${zoom}]]*/ 7;
+            var mapId = /*[[${mapId}]]*/ 'donorMap';
+            var showCenterMarker = /*[[${showCenterMarker}]]*/ false;
+
+            window.lifelinkMapConfigs = window.lifelinkMapConfigs || [];
+            window.lifelinkMapConfigs.push({
+                mapId: mapId,
+                markers: markers,
+                centerLat: centerLat,
+                centerLng: centerLng,
+                zoom: zoom,
+                showCenterMarker: showCenterMarker
+            });
+        })();
+        /*]]>*/
+    </script>
+</div>
