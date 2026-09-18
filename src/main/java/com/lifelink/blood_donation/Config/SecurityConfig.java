@@ -1,6 +1,9 @@
 package com.lifelink.blood_donation.Config;
 
+import com.lifelink.blood_donation.Security.CustomOAuth2UserService;
 import com.lifelink.blood_donation.Security.CustomUserDetailsService;
+import com.lifelink.blood_donation.Security.OAuth2LoginSuccessHandler;
+import com.lifelink.blood_donation.Security.ProfileCompletionFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,15 +16,19 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // enables @PreAuthorize on controller/service methods later
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final ProfileCompletionFilter profileCompletionFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,6 +47,9 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/register", "/login", "/error", "/css/**", "/js/**", "/images/**").permitAll()
+                        .requestMatchers("/verify-otp", "/verify-otp/**", "/resend-otp").permitAll()
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers("/complete-profile").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/donor/**").hasRole("DONOR")
                         .requestMatchers("/patient/**").hasRole("PATIENT")
@@ -53,28 +63,35 @@ public class SecurityConfig {
                         .failureUrl("/login?error=true")
                         .permitAll()
                 )
+                .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/login")
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .successHandler(oAuth2LoginSuccessHandler)
+                )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout=true")
                         .permitAll()
                 )
-                .authenticationProvider(authenticationProvider());
-                //.csrf(csrf -> csrf.disable());
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(profileCompletionFilter, AuthorizationFilter.class);
+        //.csrf(csrf -> csrf.disable());
         return http.build();
     }
 
     @Bean
     public AuthenticationSuccessHandler roleBasedSuccessHandler() {
         return (request, response, authentication) -> {
-            String redirectUrl = "/";
             for (GrantedAuthority authority : authentication.getAuthorities()) {
                 switch (authority.getAuthority()) {
-                    case "ROLE_ADMIN"   -> redirectUrl = "/admin/dashboard";
-                    case "ROLE_DONOR"   -> redirectUrl = "/donor/dashboard";
-                    case "ROLE_PATIENT" -> redirectUrl = "/patient/dashboard";
+                    case "ROLE_ADMIN"   -> { response.sendRedirect("/admin/dashboard"); return; }
+                    case "ROLE_DONOR"   -> { response.sendRedirect("/donor/dashboard"); return; }
+                    case "ROLE_PATIENT" -> { response.sendRedirect("/patient/dashboard"); return; }
                 }
             }
-            response.sendRedirect(redirectUrl);
+            // No role yet (profile incomplete, e.g. local registration path) — send them onward directly
+            // rather than to "/", which was silently swallowing this case before.
+            response.sendRedirect("/complete-profile");
         };
     }
 }

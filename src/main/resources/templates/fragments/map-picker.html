@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="mapPicker(latFieldId, lngFieldId, defaultLat, defaultLng, defaultZoom)">
+  <div id="location-picker-map" style="height: 350px; width: 100%; border-radius: 8px;"></div>
+  <small class="text-muted">Click on the map, or drag the pin, to set your exact location.</small>
+
+  <input type="hidden" th:field="*{latitude}">
+  <input type="hidden" th:field="*{longitude}">
+
+  <script th:inline="javascript">
+    /*<![CDATA[*/
+    window.lifelinkMapConfigs = window.lifelinkMapConfigs || [];
+
+    (function () {
+      var latFieldId = /*[[${latFieldId}]]*/ 'latitude';
+      var lngFieldId = /*[[${lngFieldId}]]*/ 'longitude';
+      var defaultLat = /*[[${defaultLat}]]*/ 23.8103;
+      var defaultLng = /*[[${defaultLng}]]*/ 90.4125;
+      var defaultZoom = /*[[${defaultZoom}]]*/ 12;
+
+      var latInput = document.getElementById(latFieldId);
+      var lngInput = document.getElementById(lngFieldId);
+      var existingLat = parseFloat(latInput.value) || defaultLat;
+      var existingLng = parseFloat(lngInput.value) || defaultLng;
+
+      window.lifelinkMapConfigs.push({
+        mapId: 'location-picker-map',
+        centerLat: existingLat,
+        centerLng: existingLng,
+        zoom: defaultZoom,
+        pickable: true,
+        latFieldId: latFieldId,
+        lngFieldId: lngFieldId
+      });
+    })();
+    /*]]>*/
+  </script>
+</div>
+</body>
+</html>

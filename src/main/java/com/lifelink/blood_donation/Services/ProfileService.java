@@ -1,5 +1,6 @@
 package com.lifelink.blood_donation.Services;
 
+import com.lifelink.blood_donation.DTO.ProfileCompletionDto;
 import com.lifelink.blood_donation.DTO.ProfileUpdateRequest;
 import com.lifelink.blood_donation.Entities.Enums.Role;
 import com.lifelink.blood_donation.Entities.User;
@@ -68,5 +69,28 @@ public class ProfileService {
 
         donor.setVerified(true);
         userRepository.save(donor);
+    }
+
+    @Transactional
+    public void completeProfile(Long userId, ProfileCompletionDto dto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (dto.getRole() == Role.ADMIN) {
+            throw new InvalidOperationException("Cannot self-assign the admin role");
+        }
+
+        user.setRole(dto.getRole());
+        user.setBloodGroup(dto.getBloodGroup());
+        user.setAddress(dto.getAddress());
+        user.setPhone(dto.getPhone());
+        user.setDistrict(dto.getDistrict());
+        user.setLatitude(dto.getLatitude());
+        user.setLongitude(dto.getLongitude());
+        if (dto.getRole() == Role.DONOR && dto.getLastDonationDate() != null) {
+            user.setLastDonationDate(dto.getLastDonationDate());
+        }
+        user.setProfileCompleted(true);
+        userRepository.save(user);
     }
 }

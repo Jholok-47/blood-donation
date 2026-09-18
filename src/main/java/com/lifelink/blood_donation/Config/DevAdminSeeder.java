@@ -1,5 +1,6 @@
 package com.lifelink.blood_donation.Config;
 
+import com.lifelink.blood_donation.Entities.Enums.AuthProvider;
 import com.lifelink.blood_donation.Entities.Enums.Role;
 import com.lifelink.blood_donation.Entities.User;
 import com.lifelink.blood_donation.Repositories.UserRepository;
@@ -8,27 +9,31 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
-@Configuration
+@Component
 @RequiredArgsConstructor
-public class DevAdminSeeder {
+public class DevAdminSeeder implements CommandLineRunner {
 
-    // TEMPORARY — for local testing only, until admin provisioning (open question) is decided.
-    @Bean
-    CommandLineRunner seedAdmin(UserRepository userRepository, PasswordEncoder encoder) {
-        return args -> {
-            if (userRepository.findByEmail("admin@bloodplatform.com").isEmpty()) {
-                User admin = User.builder()
-                        .fullName("System Admin")
-                        .email("admin@bloodplatform.com")
-                        .password(encoder.encode("admin123"))
-                        .phone("0000000000")
-                        .role(Role.ADMIN)
-                        .verified(true)
-                        .available(false)
-                        .build();
-                userRepository.save(admin);
-            }
-        };
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public void run(String... args) {
+        if (userRepository.findByEmail("admin@lifelink.com").isPresent()) {
+            return; // already seeded — nothing to do
+        }
+
+        User admin = User.builder()
+                .fullName("Admin")
+                .email("admin@lifelink.com")
+                .password(passwordEncoder.encode("adminPassword"))
+                .role(Role.ADMIN)
+                .authProvider(AuthProvider.LOCAL)
+                .profileCompleted(true)
+                .emailVerified(true)
+                .build();
+
+        userRepository.save(admin);
     }
 }

@@ -16,6 +16,32 @@
 
                     var map = new google.maps.Map(el, { zoom: cfg.zoom, center: center });
 
+                    // Module 11: single draggable/click-to-place marker mode for the Complete Profile
+                    // location picker — separate branch from the static multi-pin mode below.
+                    if (cfg.pickable) {
+                        var latInput = document.getElementById(cfg.latFieldId);
+                        var lngInput = document.getElementById(cfg.lngFieldId);
+
+                        var pickerMarker = new google.maps.Marker({
+                            position: center,
+                            map: map,
+                            draggable: true
+                        });
+
+                        function updateFields(pos) {
+                            latInput.value = pos.lat();
+                            lngInput.value = pos.lng();
+                        }
+                        updateFields(pickerMarker.getPosition());
+
+                        pickerMarker.addListener('dragend', function () { updateFields(pickerMarker.getPosition()); });
+                        map.addListener('click', function (e) {
+                            pickerMarker.setPosition(e.latLng);
+                            updateFields(e.latLng);
+                        });
+                        return;
+                    }
+
                     if (cfg.showCenterMarker && cfg.centerLat != null && cfg.centerLng != null) {
                         new google.maps.Marker({
                             position: center,
@@ -25,7 +51,7 @@
                         });
                     }
 
-                    cfg.markers.forEach(function (m) {
+                    (cfg.markers || []).forEach(function (m) {
                         if (m.latitude == null || m.longitude == null) return;
                         var marker = new google.maps.Marker({
                             position: { lat: m.latitude, lng: m.longitude },

@@ -16,4 +16,6 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     // Candidate donors for matching: role DONOR, verified, available, blood group in the compatible list
     List<User> findByRoleAndBloodGroupInAndVerifiedTrueAndAvailableTrue(Role role, List<BloodGroup> bloodGroups);
+
+    Optional<User> findByGoogleId(String googleId);
 }

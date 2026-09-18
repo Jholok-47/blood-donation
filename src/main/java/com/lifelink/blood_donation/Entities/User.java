@@ -1,5 +1,6 @@
 package com.lifelink.blood_donation.Entities;
 
+import com.lifelink.blood_donation.Entities.Enums.AuthProvider;
 import com.lifelink.blood_donation.Entities.Enums.BloodGroup;
 import com.lifelink.blood_donation.Entities.Enums.Role;
 import jakarta.persistence.*;
@@ -32,7 +33,6 @@ public class User extends BaseEntity {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Role role;
 
     // Nullable because ADMIN doesn't have a blood group
@@ -55,6 +55,21 @@ public class User extends BaseEntity {
     // Denormalized convenience field, updated when a DonationHistory row
     // is created for this donor. Used for the 3-month eligibility check.
     private LocalDate lastDonationDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider authProvider;
+
+    @Column(unique = true)
+    private String googleId; // null for LOCAL-only accounts
+
+    private String address; // NEW — free-text, distinct from latitude/longitude
+
+    @Column(nullable = false)
+    private boolean profileCompleted = false;
+
+    @Column(nullable = false)
+    private boolean emailVerified = false;
 
     // Convenience method for Module 6's eligibility logic
     @Transient
