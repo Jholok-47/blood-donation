@@ -32,6 +32,7 @@ public class RequestAssignService {
     private final BloodRequestRepository bloodRequestRepository;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     // Verified, available donors whose blood group can legally donate to only one request's blood group.
     public List<User> getCompatibleDonors(Long bloodRequestId) {
@@ -87,6 +88,7 @@ public class RequestAssignService {
                 "You've been assigned to a " + request.getBloodGroup() +
                         " request in " + request.getDistrict() + ". Please accept or decline."
         );
+        emailService.sendAssignmentEmail(donor, request); // Module 13
 
         request.setStatus(RequestStatus.ASSIGNED);
         bloodRequestRepository.save(request);
@@ -122,6 +124,7 @@ public class RequestAssignService {
                 "You've been assigned to a " + request.getBloodGroup() +
                         " request in " + request.getDistrict() + " (reassigned by admin)."
         );
+        emailService.sendAssignmentEmail(newDonor, request); // Module 13
     }
 
     // Donor accepts — just records the response timestamp, stays ACTIVE until donation is completed (Module 6)
@@ -129,6 +132,11 @@ public class RequestAssignService {
     public void acceptAssignment(Long assignId, Long donorId) {
         RequestAssign assign = getOwnedActiveAssignment(assignId, donorId);
         assign.setRespondedAt(LocalDateTime.now());
+
+        BloodRequest request = assign.getBloodRequest();
+        User patient = request.getPatient();
+        User donor = assign.getDonor();
+        emailService.sendAcceptanceEmail(patient, donor, request); // Module 13
         requestAssignRepository.save(assign);
     }
 
@@ -257,6 +265,7 @@ public class RequestAssignService {
                 "You've been auto-assigned to a " + bloodRequest.getBloodGroup() +
                         " request in " + bloodRequest.getDistrict() + " after the previous donor didn't respond."
         );
+        emailService.sendAssignmentEmail(nextDonor, bloodRequest); // Module 13
     }
 
     @Transactional
