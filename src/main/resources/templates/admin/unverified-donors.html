@@ -15,7 +15,7 @@
     <table class="table table-bordered" th:if="${!donors.isEmpty()}">
         <thead>
         <tr>
-            <th>Name</th><th>Email</th><th>Blood Group</th><th>District</th><th></th>
+            <th>Name</th><th>Email</th><th>Blood Group</th><th>District</th><th>Phone Number</th><th></th>
         </tr>
         </thead>
         <tbody>
@@ -24,10 +24,17 @@
             <td th:text="${donor.email}"></td>
             <td th:text="${donor.bloodGroup}"></td>
             <td th:text="${donor.district}"></td>
+            <td th:text="${donor.phone}"></td>
             <td>
-                <form th:action="@{/admin/donors/{id}/verify(id=${donor.id})}" method="post">
-                    <button type="submit" class="btn btn-sm btn-success">Verify</button>
-                </form>
+                <div class="d-flex gap-1">
+                    <form th:action="@{/admin/donors/{id}/verify(id=${donor.id})}" method="post">
+                        <button type="submit" class="btn btn-sm btn-success">Verify</button>
+                    </form>
+                    <form th:action="@{/admin/donors/{id}/delete(id=${donor.id})}" method="post"
+                          onsubmit="return confirm('Delete this donor account permanently? This cannot be undone.');">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </div>
             </td>
         </tr>
         </tbody>

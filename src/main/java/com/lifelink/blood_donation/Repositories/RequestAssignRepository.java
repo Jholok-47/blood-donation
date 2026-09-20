@@ -28,4 +28,6 @@ public interface RequestAssignRepository extends JpaRepository<RequestAssign, Lo
     List<RequestAssign> findAllByBloodRequestIdAndStatusIn(Long bloodRequestId, List<AssignStatus> statuses);
 
     List<RequestAssign> findByBloodRequestIdInAndStatusIn(List<Long> bloodRequestIds, List<AssignStatus> statuses);
+
+    boolean existsByDonorId(Long donorId);
 }

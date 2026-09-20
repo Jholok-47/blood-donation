@@ -6,6 +6,9 @@ import com.lifelink.blood_donation.Entities.Enums.Role;
 import com.lifelink.blood_donation.Entities.User;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
+import com.lifelink.blood_donation.Repositories.DonationHistoryRepository;
+import com.lifelink.blood_donation.Repositories.NotificationRepository;
+import com.lifelink.blood_donation.Repositories.RequestAssignRepository;
 import com.lifelink.blood_donation.Repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,10 @@ import java.util.List;
 public class ProfileService {
 
     private final UserRepository userRepository;
+    private final RequestAssignRepository requestAssignRepository;
+    private final DonationHistoryRepository donationHistoryRepository;
+    private final NotificationRepository notificationRepository;
+
 
     public User getCurrentUser(Long userId) {
         return userRepository.findById(userId)
@@ -92,5 +99,26 @@ public class ProfileService {
         }
         user.setProfileCompleted(true);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteUnverifiedDonor(Long donorId) {
+        User donor = userRepository.findById(donorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Donor not found"));
+
+        if (donor.getRole() != Role.DONOR) {
+            throw new InvalidOperationException("Only donor accounts can be deleted through this action.");
+        }
+
+        boolean hasAssignments = requestAssignRepository.existsByDonorId(donorId);
+        boolean hasDonations = donationHistoryRepository.countByDonorId(donorId) > 0;
+
+        if (hasAssignments || hasDonations) {
+            throw new InvalidOperationException(
+                    "This donor has assignment or donation history and cannot be deleted.");
+        }
+
+        notificationRepository.deleteAllByRecipientId(donorId);
+        userRepository.delete(donor);
     }
 }

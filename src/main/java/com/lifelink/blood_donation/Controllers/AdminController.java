@@ -158,4 +158,15 @@ public class AdminController {
         }
         return "redirect:/admin/requests";
     }
+
+    @PostMapping("/admin/donors/{id}/delete")
+    public String deleteUnverifiedDonor(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            profileService.deleteUnverifiedDonor(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Donor account deleted successfully.");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/donors/unverified";
+    }
 }

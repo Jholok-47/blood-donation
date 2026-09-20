@@ -31,6 +31,7 @@
                 <th></th>
                 <th>Name</th>
                 <th>Blood Group</th>
+                <th>Phone Number</th>
                 <th>District</th>
                 <th>Score</th>
                 <th title="Proximity / Reliability / Recency">Breakdown</th>
@@ -43,6 +44,7 @@
                 </td>
                 <td th:text="${ranked.donor.fullName}"></td>
                 <td th:text="${ranked.donor.bloodGroup}"></td>
+                <td th:text="${ranked.donor.phone}">N/A</td>
                 <td th:text="${ranked.donor.district}"></td>
                 <td>
                     <span class="badge bg-primary" th:text="${ranked.score.totalScore}"></span>
