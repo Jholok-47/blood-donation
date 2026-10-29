@@ -1,9 +1,12 @@
 package com.lifelink.blood_donation.Controllers;
 
+import com.lifelink.blood_donation.DTO.ForgotPasswordRequest;
 import com.lifelink.blood_donation.DTO.LocalRegisterRequest;
 import com.lifelink.blood_donation.DTO.OtpVerifyRequest;
+import com.lifelink.blood_donation.DTO.ResetPasswordRequest;
 import com.lifelink.blood_donation.Exceptions.EmailAlreadyExistsException;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
+import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
 import com.lifelink.blood_donation.Services.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -91,5 +94,60 @@ public class AuthController {
     @GetMapping("/login")
     public String showLoginForm() {
         return "login";
+    }
+
+    // AuthController.java — add:
+
+    @GetMapping("/forgot-password")
+    public String showForgotPasswordForm(Model model) {
+        model.addAttribute("forgotPasswordRequest", new ForgotPasswordRequest());
+        return "forgot-password";
+    }
+
+    @PostMapping("/forgot-password")
+    public String handleForgotPassword(@Valid @ModelAttribute ForgotPasswordRequest forgotPasswordRequest,
+                                       BindingResult bindingResult,
+                                       RedirectAttributes redirectAttributes,
+                                       Model model) {
+        if (bindingResult.hasErrors()) {
+            return "forgot-password";
+        }
+        try {
+            authService.initiatePasswordReset(forgotPasswordRequest.getEmail());
+        } catch (ResourceNotFoundException | InvalidOperationException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+            return "forgot-password";
+        }
+        redirectAttributes.addFlashAttribute("successMessage", "A reset code has been sent to your email.");
+        return "redirect:/reset-password?email=" + forgotPasswordRequest.getEmail();
+    }
+
+    @GetMapping("/reset-password")
+    public String showResetPasswordForm(@RequestParam String email, Model model) {
+        ResetPasswordRequest dto = new ResetPasswordRequest();
+        dto.setEmail(email);
+        model.addAttribute("resetPasswordRequest", dto);
+        model.addAttribute("email", email);
+        return "reset-password";
+    }
+
+    @PostMapping("/reset-password")
+    public String handleResetPassword(@Valid @ModelAttribute ResetPasswordRequest resetPasswordRequest,
+                                      BindingResult bindingResult,
+                                      RedirectAttributes redirectAttributes,
+                                      Model model) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("email", resetPasswordRequest.getEmail());
+            return "reset-password";
+        }
+        try {
+            authService.resetPassword(resetPasswordRequest);
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+            model.addAttribute("email", resetPasswordRequest.getEmail());
+            return "reset-password";
+        }
+        redirectAttributes.addFlashAttribute("successMessage", "Password reset. Please log in.");
+        return "redirect:/login";
     }
 }

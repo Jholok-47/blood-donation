@@ -4,6 +4,7 @@ import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.Enums.OtpPurpose;
 import com.lifelink.blood_donation.Entities.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -19,17 +20,50 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    public void sendOtpEmail(String to, String code, OtpPurpose purpose) {
-        String subject = purpose == OtpPurpose.REGISTRATION
-                ? "LifeLink — Verify your email"
-                : "LifeLink — Password reset code";
+    // EmailService.java — replace the existing sendOtpEmail signature/body with:
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText("Your LifeLink verification code is: " + code
-                + "\nThis code expires in a few minutes.");
-        mailSender.send(message);
+    /**
+     * Sends an OTP email. Unlike the assignment/acceptance emails (Module 13),
+     * this is NOT best-effort: delivery failure is rethrown as an unchecked
+     * MailSendException so the calling flow (registration or password reset)
+     * can tell the user the code never went out.
+     */
+    public void sendOtpEmail(String toEmail, String otpCode, OtpPurpose purpose) {
+        String subject;
+        String heading;
+        String bodyText;
+
+        if (purpose == OtpPurpose.PASSWORD_RESET) {
+            subject = "LifeLink - Password Reset Code";
+            heading = "Reset your password";
+            bodyText = "Use the code below to reset your LifeLink password. "
+                    + "If you didn't request this, you can safely ignore this email.";
+        } else {
+            subject = "LifeLink - Verify Your Email";
+            heading = "Verify your email";
+            bodyText = "Use the code below to verify your LifeLink account.";
+        }
+
+        String html = """
+            <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto;">
+                <h2 style="color:#dc3545;">%s</h2>
+                <p>%s</p>
+                <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px;">%s</p>
+                <p style="color:#6c757d; font-size: 13px;">This code expires shortly. Do not share it with anyone.</p>
+            </div>
+            """.formatted(heading, bodyText, otpCode);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            log.error("Failed to send {} OTP email to {}", purpose, toEmail, e);
+            throw new MailSendException("Failed to send OTP email", e);
+        }
     }
 
     // Module 13 will add sendAssignmentEmail(...) / sendAcceptanceEmail(...) here,

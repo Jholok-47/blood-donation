@@ -47,8 +47,9 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/register", "/login", "/error", "/css/**", "/js/**", "/images/**").permitAll()
-                        .requestMatchers("/verify-otp", "/verify-otp/**", "/resend-otp").permitAll()
-                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**",
+                                "/verify-otp", "/verify-otp/**", "/resend-otp",
+                                "/forgot-password", "/reset-password").permitAll()
                         .requestMatchers("/complete-profile").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/donor/**").hasRole("DONOR")
