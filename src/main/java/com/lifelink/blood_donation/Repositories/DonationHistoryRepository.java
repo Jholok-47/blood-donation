@@ -12,4 +12,6 @@ public interface DonationHistoryRepository extends JpaRepository<DonationHistory
 
     // Needed to count a donor's past completed donations for the reliability factor.
     long countByDonorId(Long donorId);
+
+    List<DonationHistory> findByPatientIdOrderByDonationDateDesc(Long patientId);
 }

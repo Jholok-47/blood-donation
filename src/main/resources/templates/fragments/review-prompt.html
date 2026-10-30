@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+<th:block th:fragment="reviewPrompt">
+    <th:block th:if="${pendingReviews != null and !pendingReviews.isEmpty()}">
+        <div class="modal fade" id="reviewPromptModal" tabindex="-1" aria-labelledby="reviewPromptTitle" aria-hidden="true"
+             th:attr="data-donation-id=${pendingReviews[0].donationHistoryId}">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="reviewPromptTitle">How was your donor?</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-1">
+                            <strong th:text="${pendingReviews[0].donorName}">Donor</strong>
+                            recently completed a donation for you.
+                        </p>
+                        <p class="text-muted mb-0">
+                            Take a moment to rate your experience. It helps other patients and recognises donors.
+                        </p>
+                        <p class="text-muted small mt-2 mb-0" th:if="${pendingReviews.size() > 1}"
+                           th:text="'You have ' + ${pendingReviews.size() - 1} + ' more donation(s) awaiting a review.'"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Maybe later</button>
+                        <a class="btn btn-danger"
+                           th:href="@{/patient/reviews/new(donationId=${pendingReviews[0].donationHistoryId})}">Rate now</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var el = document.getElementById('reviewPromptModal');
+                if (!el || typeof bootstrap === 'undefined') return;
+                var key = 'lifelink.reviewPromptDismissed.' + el.dataset.donationId;
+                try { if (sessionStorage.getItem(key) === '1') return; } catch (e) { /* storage blocked: just show */ }
+                el.addEventListener('hidden.bs.modal', function () {
+                    try { sessionStorage.setItem(key, '1'); } catch (e) { /* ignore */ }
+                });
+                new bootstrap.Modal(el).show();
+            });
+        </script>
+    </th:block>
+</th:block>
+</body>
+</html>

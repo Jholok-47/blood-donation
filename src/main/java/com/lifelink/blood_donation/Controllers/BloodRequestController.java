@@ -5,6 +5,7 @@ import com.lifelink.blood_donation.Entities.Enums.BloodGroup;
 import com.lifelink.blood_donation.Entities.Enums.UrgencyLevel;
 import com.lifelink.blood_donation.Security.UserPrincipal;
 import com.lifelink.blood_donation.Services.BloodRequestService;
+import com.lifelink.blood_donation.Services.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +21,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class BloodRequestController {
 
     private final BloodRequestService bloodRequestService;
+    private final ReviewService reviewService;   // NEW (Module 15)
 
     @GetMapping("/new")
     public String showCreateForm(Model model) {
@@ -48,7 +50,10 @@ public class BloodRequestController {
 
     @GetMapping
     public String myRequests(@AuthenticationPrincipal UserPrincipal principal, Model model) {
-        model.addAttribute("requests", bloodRequestService.getMyRequests(principal.getUser().getId()));
+        Long patientId = principal.getUser().getId();   // captured once, reused below
+        model.addAttribute("requests", bloodRequestService.getMyRequests(patientId));
+        model.addAttribute("reviewStates", reviewService.getReviewStateByRequestId(patientId));   // NEW
+        model.addAttribute("pendingReviews", reviewService.getPendingReviews(patientId));         // NEW
         return "patient/my-requests";
     }
 }

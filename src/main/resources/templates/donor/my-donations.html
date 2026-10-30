@@ -8,6 +8,15 @@
 <body class="container mt-4">
 <h2>My Donation History</h2>
 
+<div class="card mb-3" th:if="${ratingSummary.reviewCount > 0}">
+    <div class="card-body d-flex align-items-center gap-3">
+        <div class="display-6 text-warning mb-0" th:text="${ratingSummary.averageRating}">4.5</div>
+        <div>
+            <div class="text-warning" th:text="${'★'.repeat(T(java.lang.Math).round(ratingSummary.averageRating))}"></div>
+            <div class="text-muted small" th:text="${ratingSummary.reviewCount} + ' review(s)'"></div>
+        </div>
+    </div>
+</div>
 <table class="table table-bordered mt-3" th:if="${!donations.isEmpty()}">
     <thead>
     <tr>
@@ -15,6 +24,7 @@
         <th>Quantity</th>
         <th>Patient</th>
         <th>Blood Group</th>
+        <th>Patient Feedback</th>
     </tr>
     </thead>
     <tbody>
@@ -23,6 +33,13 @@
         <td th:text="${d.quantity}"></td>
         <td th:text="${d.patient.fullName}"></td>
         <td th:text="${d.bloodRequest.bloodGroup}"></td>
+        <td th:with="rv=${reviewsByDonationId.get(d.id)}">
+            <span th:if="${rv == null}" class="text-muted small">No review yet</span>
+            <div th:if="${rv != null}">
+                <span class="text-warning" th:text="${'★'.repeat(rv.rating)}"></span>
+                <div class="small" th:if="${rv.comment != null}" th:text="${rv.comment}"></div>
+            </div>
+        </td>
     </tr>
     </tbody>
 </table>

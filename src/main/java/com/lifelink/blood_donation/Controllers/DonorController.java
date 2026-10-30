@@ -7,6 +7,7 @@ import com.lifelink.blood_donation.Services.DonationHistoryService;
 import com.lifelink.blood_donation.Services.NotificationService;
 import com.lifelink.blood_donation.Services.RequestAssignService;
 import com.lifelink.blood_donation.Security.UserPrincipal;
+import com.lifelink.blood_donation.Services.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -23,6 +24,7 @@ public class DonorController {
     private final NotificationService notificationService;
     private final RequestAssignService requestAssignService;
     private final DonationHistoryService donationHistoryService;
+    private final ReviewService reviewService;
 
     @GetMapping("/donor/assignments")
     public String myAssignments(@AuthenticationPrincipal UserPrincipal principal, Model model) {
@@ -58,8 +60,11 @@ public class DonorController {
 
     @GetMapping("/donor/donations")
     public String myDonations(@AuthenticationPrincipal UserPrincipal principal, Model model) {
-        List<DonationHistory> donations = donationHistoryService.getMyDonationHistory(principal.getUser().getId());
+        Long donorId = principal.getUser().getId();
+        List<DonationHistory> donations = donationHistoryService.getMyDonationHistory(donorId);
         model.addAttribute("donations", donations);
+        model.addAttribute("ratingSummary", reviewService.getDonorRatingSummary(donorId));
+        model.addAttribute("reviewsByDonationId", reviewService.getReviewsByDonationIdForDonor(donorId));
         return "donor/my-donations";
     }
 
