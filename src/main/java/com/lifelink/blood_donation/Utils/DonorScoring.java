@@ -1,137 +1,85 @@
 package com.lifelink.blood_donation.Utils;
 
-import com.lifelink.blood_donation.Entities.BloodRequest;
-import com.lifelink.blood_donation.Entities.User;
 import com.lifelink.blood_donation.DTO.DonorScoreBreakdown;
+import com.lifelink.blood_donation.Entities.User;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-
+/**
+ * REPLACES the old DonorScoring.
+ * Goal: pure static rule-based score (still NOT the ML model - that is Module 16).
+ *   total = 0.40 proximity + 0.35 reliability + 0.25 rating
+ * The old 0.25 "recency" component is gone because it needed last_donation_date; donor rating
+ * (Module 15 reviews) takes its slot, so the other two weights are unchanged.
+ *
+ * If your old proximity code used different fallback numbers, copy them into proximity().
+ */
 public final class DonorScoring {
 
+    public static final double W_PROXIMITY = 0.40;
+    public static final double W_RELIABILITY = 0.35;
+    public static final double W_RATING = 0.25;
+
+    private static final double FULL_SCORE_KM = 5.0;
+    private static final double ZERO_SCORE_KM = 100.0;
+    private static final double SAME_DISTRICT_FALLBACK = 50.0;
+
+    private static final double RELIABILITY_PRIOR = 2.5;   // first-pass tuning (unchanged from Module 9)
+
+    private static final double RATING_PRIOR_MEAN = 4.0;   // new donors start at 4.0 stars...
+    private static final double RATING_PRIOR_WEIGHT = 3.0; // ...worth three imaginary reviews
+
     private DonorScoring() {
-        // pure static utility, no instances
     }
 
-    private static final double SMOOTHING_PRIOR = 2.5; // "virtual" neutral outcomes
-    private static final double PROXIMITY_FULL_SCORE_DISTANCE_KM = 5.0;
-    private static final double PROXIMITY_MAX_DISTANCE_KM = 100.0;
-
-    // Weights sum to 1.0 — this is the single place the Module 8 formula is defined.
-    private static final double PROXIMITY_WEIGHT = 0.40;
-    private static final double RELIABILITY_WEIGHT = 0.35;
-    private static final double RECENCY_WEIGHT = 0.25;
-
-    // 90 days = the 3-month eligibility threshold already enforced by
-    // User.isEligibleToDonate(); a donor never even reaches ranking unless
-    // they've cleared it. 180 days is treated as "fully rested".
-    private static final long RECENCY_MIN_DAYS = 90;
-    private static final long RECENCY_MAX_DAYS = 180;
-
-    private static final double RELIABILITY_BASELINE = 50.0;
-    private static final double COMPLETED_DONATION_BONUS = 10.0;
-    private static final double DECLINE_PENALTY = 20.0;
-
-    public static DonorScoreBreakdown score(User donor, BloodRequest request,
-                                            long completedDonationCount,
-                                            long declineCount) {
-        double proximity = calculateProximityScore(donor, request);
-        double reliability = calculateReliabilityScore(completedDonationCount, declineCount);
-        double recency = calculateRecencyScore(donor);
-
-        double total = (proximity * PROXIMITY_WEIGHT)
-                + (reliability * RELIABILITY_WEIGHT)
-                + (recency * RECENCY_WEIGHT);
-
+    /**
+     * @param completed   donations this donor completed
+     * @param letDown     assignments the donor withdrew from or went silent on (DECLINED + UNRESPONSIVE)
+     * @param avgRating   average review rating, null when no reviews
+     * @param reviewCount number of reviews
+     */
+    public static DonorScoreBreakdown score(User donor, User patient,
+                                            long completed, long letDown,
+                                            Double avgRating, long reviewCount) {
+        double proximity = proximity(donor, patient);
+        double reliability = reliability(completed, letDown);
+        double rating = rating(avgRating, reviewCount);
+        double total = W_PROXIMITY * proximity + W_RELIABILITY * reliability + W_RATING * rating;
         return DonorScoreBreakdown.builder()
-                .proximityScore(round(proximity))
-                .reliabilityScore(round(reliability))
-                .recencyScore(round(recency))
-                .totalScore(round(total))
+                .proximityScore(proximity)
+                .reliabilityScore(reliability)
+                .ratingScore(rating)
+                .totalScore(total)
                 .build();
     }
 
-    // Placeholder: district-equality proximity check. lat/long exist on User
-    // but real distance calculation is deferred to Module 10 (Google Maps
-    // integration) — see Project State §9. Revisit once coordinates are
-    // reliably populated for all users.
-    // Replace the old district-equality calculateProximityScore(...) with this:
-
-
-    public static double calculateProximityScore(User donor, BloodRequest request) {
-        Double donorLat = donor.getLatitude();
-        Double donorLng = donor.getLongitude();
-
-        User patient = request.getPatient();
-        Double requestLat = patient != null ? patient.getLatitude() : null;
-        Double requestLng = patient != null ? patient.getLongitude() : null;
-
-        // Fallback: if either party hasn't set coordinates yet, use the old
-        // district-equality check rather than silently scoring 0.
-        if (donorLat == null || donorLng == null || requestLat == null || requestLng == null) {
-            boolean sameDistrict = donor.getDistrict() != null
-                    && donor.getDistrict().equalsIgnoreCase(request.getDistrict());
-            return sameDistrict ? 100.0 : 40.0;
+    static double proximity(User donor, User patient) {
+        Double dLat = donor.getLatitude();
+        Double dLng = donor.getLongitude();
+        Double pLat = patient.getLatitude();
+        Double pLng = patient.getLongitude();
+        if (dLat != null && dLng != null && pLat != null && pLng != null) {
+            double km = DistanceCalculator.haversineDistanceKm(dLat, dLng, pLat, pLng);
+            if (km <= FULL_SCORE_KM) return 100.0;
+            if (km >= ZERO_SCORE_KM) return 0.0;
+            return 100.0 * (ZERO_SCORE_KM - km) / (ZERO_SCORE_KM - FULL_SCORE_KM);
         }
-
-        double distanceKm = DistanceCalculator.haversineDistanceKm(donorLat, donorLng, requestLat, requestLng);
-
-        if (distanceKm <= PROXIMITY_FULL_SCORE_DISTANCE_KM) {
-            return 100.0;
-        }
-        if (distanceKm >= PROXIMITY_MAX_DISTANCE_KM) {
-            return 0.0;
-        }
-
-        double range = PROXIMITY_MAX_DISTANCE_KM - PROXIMITY_FULL_SCORE_DISTANCE_KM;
-        return ((PROXIMITY_MAX_DISTANCE_KM - distanceKm) / range) * 100.0;
+        String a = donor.getDistrict();
+        String b = patient.getDistrict();
+        return (a != null && b != null && a.equalsIgnoreCase(b)) ? SAME_DISTRICT_FALLBACK : 0.0;
     }
 
-//    private static double calculateReliabilityScore(long completedDonationCount, long declineCount) {
-//        double score = RELIABILITY_BASELINE
-//                + (completedDonationCount * COMPLETED_DONATION_BONUS)
-//                - (declineCount * DECLINE_PENALTY);
-//        return clamp(score, 0.0, 100.0);
-//    }
-
-    // Uses Laplace/additive smoothing: treats a donor with no history as having
-// a small number of "virtual" neutral outcomes, so:
-//   - a brand-new donor scores at baseline (50), not 0 or 100
-//   - one early decline doesn't permanently sink a donor who's fine afterward
-//   - the score is a genuine RATE, so it's naturally bounded [0,100] and can
-//     recover as more completions accumulate — never permanently clamped.
-
-    private static double calculateReliabilityScore(long completedDonationCount, long declineCount) {
-        double completions = completedDonationCount + SMOOTHING_PRIOR;
-        double total = completedDonationCount + declineCount + (2 * SMOOTHING_PRIOR);
-
-        double rate = completions / total; // naturally in (0, 1)
-        return clamp(rate * 100.0, 0.0, 100.0);
+    static double reliability(long completed, long letDown) {
+        double v = ((completed + RELIABILITY_PRIOR) / (completed + letDown + 2 * RELIABILITY_PRIOR)) * 100.0;
+        return clamp(v);
     }
 
-    // Donors reaching this method already passed isEligibleToDonate(), so
-    // lastDonationDate is either null (never donated) or >= RECENCY_MIN_DAYS
-    // in the past. Score scales linearly across the rest window.
-    private static double calculateRecencyScore(User donor) {
-        if (donor.getLastDonationDate() == null) {
-            return 100.0;
-        }
-        long daysSince = ChronoUnit.DAYS.between(donor.getLastDonationDate(), LocalDate.now());
-        if (daysSince >= RECENCY_MAX_DAYS) {
-            return 100.0;
-        }
-        if (daysSince <= RECENCY_MIN_DAYS) {
-            return 0.0;
-        }
-        double fraction = (double) (daysSince - RECENCY_MIN_DAYS) / (RECENCY_MAX_DAYS - RECENCY_MIN_DAYS);
-        return fraction * 100.0;
+    static double rating(Double avgRating, long reviewCount) {
+        double avg = (avgRating == null || reviewCount == 0) ? 0.0 : avgRating;
+        double smoothed = (avg * reviewCount + RATING_PRIOR_MEAN * RATING_PRIOR_WEIGHT)
+                / (reviewCount + RATING_PRIOR_WEIGHT);
+        return clamp(smoothed / 5.0 * 100.0);
     }
 
-    private static double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private static double round(double value) {
-        return Math.round(value * 10.0) / 10.0;
+    private static double clamp(double v) {
+        return Math.max(0.0, Math.min(100.0, v));
     }
 }

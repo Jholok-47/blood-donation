@@ -4,14 +4,20 @@ import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.Enums.OtpPurpose;
 import com.lifelink.blood_donation.Entities.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.util.HtmlUtils;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -19,6 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 public class EmailService {
 
     private final JavaMailSender mailSender;
+    @Value("${lifelink.base-url:http://localhost:8060}")
+    private String baseUrl;
+    @Value("${lifelink.donation.min-interval-months:4}")
+    private int minIntervalMonths;
 
     // EmailService.java — replace the existing sendOtpEmail signature/body with:
 
@@ -66,34 +76,7 @@ public class EmailService {
         }
     }
 
-    // Module 13 will add sendAssignmentEmail(...) / sendAcceptanceEmail(...) here,
     // called from RequestAssignService's existing three notification trigger points.
-
-    public void sendAssignmentEmail(User donor, BloodRequest request) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(donor.getEmail());
-            helper.setSubject("LifeLink – New Blood Donation Assignment");
-            helper.setText(buildAssignmentEmailBody(donor, request), true);
-            mailSender.send(message);
-        } catch (MessagingException ex) {
-            log.error("Failed to send assignment email to donor id={}", donor.getId(), ex);
-        }
-    }
-
-    public void sendAcceptanceEmail(User patient, User donor, BloodRequest request) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(patient.getEmail());
-            helper.setSubject("LifeLink – A Donor Has Accepted Your Blood Request");
-            helper.setText(buildAcceptanceEmailBody(patient, donor, request), true);
-            mailSender.send(message);
-        } catch (MessagingException ex) {
-            log.error("Failed to send acceptance email to patient id={}", patient.getId(), ex);
-        }
-    }
 
     private String buildAssignmentEmailBody(User donor, BloodRequest request) {
         return """
@@ -181,5 +164,84 @@ public class EmailService {
                 donor.getPhone() != null ? donor.getPhone() : "Not provided",
                 request.getDistrict()
         );
+    }
+
+    private void sendHtmlBestEffort(String to, String subject, String html) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(message);
+        } catch (MailException | MessagingException e) {
+            log.warn("Email to {} failed: {}", to, e.getMessage());
+        }
+    }
+
+    private static String esc(String s) {
+        return s == null ? "" : HtmlUtils.htmlEscape(s);   // org.springframework.web.util.HtmlUtils
+    }
+
+    private String layout(String heading, String bodyHtml, String buttonText, String path) {
+        return """
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #eee;border-radius:8px;padding:24px">
+          <h2 style="color:#dc3545;margin-top:0">%s</h2>
+          %s
+          <p style="margin:24px 0"><a href="%s%s" style="background:#dc3545;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">%s</a></p>
+          <p style="color:#888;font-size:12px">LifeLink Blood Donation Platform</p>
+        </div>
+        """.formatted(heading, bodyHtml, baseUrl, path, buttonText);
+    }
+
+    /** Bulk send -> @Async so approving a request never waits for SMTP. Needs @EnableAsync (section 11). */
+    @Async
+    public void sendBroadcastEmail(String to, String donorName, String bloodGroup, String quantity,
+                                   String urgency, String district, String description) {
+        String body = """
+        <p>Hi %s,</p>
+        <p>A patient in <b>%s</b> needs <b>%s unit(s) of %s</b> blood. Urgency: <b>%s</b>.</p>
+        <p>%s</p>
+        <p>If you can donate, open LifeLink and tap <b>I can donate</b>. You are not committed until an admin selects you.
+        Please accept only if you have not donated in the last %d months and you feel healthy.</p>
+        """.formatted(esc(donorName), esc(district), esc(quantity), esc(bloodGroup), esc(urgency),
+                esc(description), minIntervalMonths);
+        sendHtmlBestEffort(to, "[LifeLink] " + urgency + ": " + bloodGroup + " blood needed in " + district,
+                layout("Blood needed near you", body, "Respond now", "/donor/requests"));
+    }
+
+    public void sendSelectionEmail(String to, String donorName, String bloodGroup, String district,
+                                   String patientName, String patientPhone, String confirmMinutes) {
+        String body = """
+        <p>Hi %s,</p>
+        <p>Thank you for accepting. An admin has <b>selected you</b> to donate <b>1 unit</b> of %s blood for a patient in %s.</p>
+        <p>Patient: <b>%s</b>%s</p>
+        <p>No further acceptance is needed. Please tap <b>Confirm I'm on my way</b> within %s minutes so we know you are reachable.
+        If you can no longer donate, tell us right away so we can find someone else.</p>
+        """.formatted(esc(donorName), esc(bloodGroup), esc(district), esc(patientName),
+                (patientPhone == null || patientPhone.isBlank()) ? "" : " - " + esc(patientPhone), esc(confirmMinutes));
+        sendHtmlBestEffort(to, "[LifeLink] You have been selected to donate " + bloodGroup,
+                layout("You've been selected", body, "Open my assignments", "/donor/assignments"));
+    }
+
+    /**
+     * ONE email to the patient per assignment batch (replaces the old sendAcceptanceEmail and the single-donor version).
+     * donorLines = ready-made "Name - phone" strings; covered = units with a donor so far.
+     */
+    public void sendDonorsAssignedEmail(String to, String patientName, String bloodGroup, String unitsNeeded,
+                                        String district, List<String> donorLines, int covered) {
+        StringBuilder list = new StringBuilder("<ul>");
+        for (String line : donorLines) {
+            list.append("<li>").append(esc(line)).append("</li>");
+        }
+        list.append("</ul>");
+        String body = """
+        <p>Hi %s,</p>
+        <p>Good news: donor(s) have been assigned to your %s request in %s. Units covered so far: <b>%d of %s</b>.</p>
+        <p>New donor(s):</p>%s
+        <p>The hospital's own screening still applies before donation.</p>
+        """.formatted(esc(patientName), esc(bloodGroup), esc(district), covered, esc(unitsNeeded), list);
+        sendHtmlBestEffort(to, "[LifeLink] " + covered + " of " + unitsNeeded + " unit(s) now have a donor",
+                layout("Donors assigned", body, "View my requests", "/patient/requests"));
     }
 }

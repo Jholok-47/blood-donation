@@ -31,10 +31,7 @@ public class SearchService {
                 .and(DonorSpecifications.hasDistrict(district))
                 .and(DonorSpecifications.hasNoActiveAssignment()); // NEW: excludes donors already committed elsewhere
 
-        // isEligibleToDonate() is @Transient — same in-memory filter pattern as
-        // RequestAssignService.getCompatibleDonors() (Module 6 precedent).
         return userRepository.findAll(spec).stream()
-                .filter(User::isEligibleToDonate)
                 .toList();
     }
 

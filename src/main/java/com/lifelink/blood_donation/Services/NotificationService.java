@@ -8,8 +8,10 @@ import com.lifelink.blood_donation.Entities.Enums.NotificationType;
 import com.lifelink.blood_donation.Exceptions.InvalidOperationException;
 import com.lifelink.blood_donation.Exceptions.ResourceNotFoundException;
 import com.lifelink.blood_donation.Repositories.NotificationRepository;
+import com.lifelink.blood_donation.Utils.BloodGroupFormatter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -50,5 +52,32 @@ public class NotificationService {
 
         notification.setRead(true);
         notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void notifyBroadcast(User donor, BloodRequest bloodRequest) {
+        String message = "Blood needed: %s, %s unit(s) in %s (%s). Tap to respond."
+                .formatted(BloodGroupFormatter.display(bloodRequest.getBloodGroup()),
+                        bloodRequest.getQuantity(), bloodRequest.getDistrict(), bloodRequest.getUrgency());
+        notificationRepository.save(Notification.builder()
+                .recipient(donor)
+                .bloodRequest(bloodRequest)
+                .type(NotificationType.REQUEST_BROADCAST)
+                .message(message)
+                .build());
+    }
+
+    @Transactional
+    public void notifySelected(RequestAssign assignment) {
+        BloodRequest br = assignment.getBloodRequest();
+        String message = "You have been selected for a %s request in %s. Please confirm you are on your way."
+                .formatted(BloodGroupFormatter.display(br.getBloodGroup()), br.getDistrict());
+        notificationRepository.save(Notification.builder()
+                .recipient(assignment.getDonor())
+                .bloodRequest(br)
+                .requestAssign(assignment)
+                .type(NotificationType.ASSIGNMENT)
+                .message(message)
+                .build());
     }
 }

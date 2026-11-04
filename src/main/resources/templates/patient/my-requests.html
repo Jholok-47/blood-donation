@@ -40,20 +40,17 @@
                       th:text="${req.status}"></span>
             </td>
             <td th:text="${#temporals.format(req.createdAt, 'dd MMM yyyy HH:mm')}"></td>
-            <td th:with="rs=${reviewStates.get(req.id)}">
-                <span th:if="${rs == null}" class="text-muted">&mdash;</span>
-
-                <span th:if="${rs != null and rs.reviewed}">
-                <span class="text-warning" th:text="${'★'.repeat(rs.rating)}"></span>
-                <span class="text-muted small">Reviewed</span>
-                </span>
-
-                <a th:if="${rs != null and rs.canReview}"
-                   class="btn btn-sm btn-outline-danger"
-                   th:href="@{/patient/reviews/new(donationId=${rs.donationHistoryId})}">Rate Donor</a>
-
-                <span th:if="${rs != null and !rs.reviewed and !rs.canReview}"
-                      class="text-muted small">Review period ended</span>
+            <td>
+                <span th:with="p=${progressByRequestId.get(req.id)}" th:if="${p != null}"
+                      th:text="${p.completed} + ' of ' + ${p.required} + ' unit(s) donated' + (${p.active} > 0 ? ', ' + ${p.active} + ' donor(s) on the way' : '')">0 of 1</span>
+            </td>
+            <td>
+                <div th:each="s : ${reviewStates.get(req.id)}" class="mb-1">
+                    <span th:text="${s.donorName}">Donor</span>
+                    <span th:if="${s.reviewed}" class="text-warning">&#9733; <span th:text="${s.rating}">5</span></span>
+                    <a th:if="${s.canReview}" th:href="@{/patient/reviews/new(donationId=${s.donationHistoryId})}" class="btn btn-sm btn-outline-danger">Rate</a>
+                    <span th:if="${!s.reviewed and !s.canReview}" class="text-muted small">Review period ended</span>
+                </div>
             </td>
         </tr>
         </tbody>

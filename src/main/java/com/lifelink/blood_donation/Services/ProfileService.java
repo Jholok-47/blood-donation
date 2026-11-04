@@ -94,9 +94,6 @@ public class ProfileService {
         user.setDistrict(dto.getDistrict());
         user.setLatitude(dto.getLatitude());
         user.setLongitude(dto.getLongitude());
-        if (dto.getRole() == Role.DONOR && dto.getLastDonationDate() != null) {
-            user.setLastDonationDate(dto.getLastDonationDate());
-        }
         user.setProfileCompleted(true);
         userRepository.save(user);
     }

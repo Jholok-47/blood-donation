@@ -31,6 +31,8 @@ public class AdminController {
     private final DonationHistoryService donationHistoryService;
     private final SearchService searchService;
     private final GoogleMapsProperties googleMapsProperties;
+    private final DonorInterestService donorInterestService;
+    private final RequestProgressService progressService;
 
     //Module 3: User profile management for Admins
     @GetMapping("/admin/donors/unverified")
@@ -59,13 +61,14 @@ public class AdminController {
                                Model model) {
         List<BloodRequest> requests = searchService.filterRequests(status, urgency);
 
-        List<Long> requestIds = requests.stream().map(BloodRequest::getId).toList();
-        Map<Long, String> assignedDonorNames = requestAssignService.getCurrentDonorNamesByRequestId(requestIds);
+        List<Long> ids = requests.stream().map(BloodRequest::getId).toList();
 
         model.addAttribute("requests", requests);
-        model.addAttribute("assignedDonorNames", assignedDonorNames);
         model.addAttribute("statuses", RequestStatus.values());
         model.addAttribute("urgencyLevels", UrgencyLevel.values());
+        model.addAttribute("interestedCounts", donorInterestService.getInterestedCountByRequestId(ids));
+        model.addAttribute("assignmentsByRequestId", requestAssignService.getActiveAssignmentsByRequestId(ids));
+        model.addAttribute("progressByRequestId", progressService.getProgressByRequestId(requests));
         return "admin/requests";
     }
 
@@ -73,8 +76,11 @@ public class AdminController {
     public String approveRequest(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
             bloodRequestService.approveRequest(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Request approved.");
-        } catch (ResourceNotFoundException | InvalidOperationException e) {
+            int notified = donorInterestService.broadcastForRequest(id);
+            redirectAttributes.addFlashAttribute("successMessage", notified > 0
+                    ? "Request approved. " + notified + " eligible donor(s) were notified."
+                    : "Request approved, but no eligible donors could be notified right now. Use 'Notify donors' on the donor selection page later.");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/requests";
@@ -93,70 +99,32 @@ public class AdminController {
 
     // Module 5: Donor assignment management for Admins
 
-    // Shows compatible donors for this request — works for APPROVED (first assign) or ASSIGNED (reassign) requests
     @GetMapping("/admin/requests/{id}/assign")
-    public String showAssignDonorPage(@PathVariable Long id, Model model) {
-        BloodRequest request = bloodRequestService.getRequestById(id);
-        List<RankedDonorDto> rankedDonors = requestAssignService.getRankedCompatibleDonors(id);
-        model.addAttribute("bloodRequest", request);
+    public String assignDonorPage(@PathVariable Long id, Model model) {
+        BloodRequest bloodRequest = bloodRequestService.getRequestById(id);
+        List<RankedDonorDto> rankedDonors = requestAssignService.getRankedInterestedDonors(id);
+        model.addAttribute("bloodRequest", bloodRequest);
+        model.addAttribute("progress", progressService.getProgress(bloodRequest));
+        model.addAttribute("assignments", requestAssignService.findAssignmentsForRequest(id));
         model.addAttribute("rankedDonors", rankedDonors);
-        model.addAttribute("mapsApiKey", googleMapsProperties.getApiKey());
-        model.addAttribute("donorMarkers", requestAssignService.toDonorMapMarkers(rankedDonors));
-        model.addAttribute("requestLat", request.getPatient().getLatitude());
-        model.addAttribute("requestLng", request.getPatient().getLongitude());
-        model.addAttribute("defaultLat", googleMapsProperties.getDefaultLat());
-        model.addAttribute("defaultLng", googleMapsProperties.getDefaultLng());
-        model.addAttribute("defaultZoom", googleMapsProperties.getDefaultZoom());
+        model.addAttribute("interestSummary", donorInterestService.getSummary(id));
+        // KEEP: your existing lines that add the map attributes (markers, API key, config).
+        //       toDonorMapMarkers(...) must now receive the interested donors (pass what it accepted before).
         return "admin/assign-donor";
     }
 
-    // First-time assignment for an APPROVED request
+    /** One OR several donors in one go: the form posts repeated donorIds. */
     @PostMapping("/admin/requests/{id}/assign")
-    public String assignDonor(@PathVariable Long id, @RequestParam Long donorId, RedirectAttributes redirectAttributes) {
+    public String assignDonors(@PathVariable Long id,
+                               @RequestParam(name = "donorIds", required = false) List<Long> donorIds,
+                               RedirectAttributes redirectAttributes) {
         try {
-            requestAssignService.assignDonor(id, donorId);
-            redirectAttributes.addFlashAttribute("successMessage", "Donor assigned successfully");
+            int n = requestAssignService.assignDonors(id, donorIds);
+            redirectAttributes.addFlashAttribute("successMessage", n + " donor(s) assigned. They and the patient have been notified.");
         } catch (InvalidOperationException | ResourceNotFoundException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
-        return "redirect:/admin/requests";
-    }
-
-    // Reassignment for an already-ASSIGNED request (cancels current active assignment, creates a new one)
-    @PostMapping("/admin/requests/{id}/reassign")
-    public String reassignDonor(@PathVariable Long id, @RequestParam Long donorId, RedirectAttributes redirectAttributes) {
-        try {
-            requestAssignService.reassignDonor(id, donorId);
-            redirectAttributes.addFlashAttribute("successMessage", "Donor reassigned successfully");
-        } catch (InvalidOperationException | ResourceNotFoundException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/admin/requests";
-    }
-
-    // Cancels the current active assignment on an ASSIGNED request, reverting it back to APPROVED — no new donor required
-    @PostMapping("/admin/requests/{id}/cancel-assignment")
-    public String cancelAssignment(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        try {
-            requestAssignService.cancelAssignment(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Assignment cancelled, request reverted to Approved");
-        } catch (InvalidOperationException | ResourceNotFoundException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/admin/requests";
-    }
-
-    // Module 6: Donation History
-
-    @PostMapping("/admin/requests/{id}/complete-donation")
-    public String completeDonation(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        try {
-            donationHistoryService.completeDonation(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Donation marked as completed.");
-        } catch (InvalidOperationException | ResourceNotFoundException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/admin/requests";
+        return "redirect:/admin/requests/" + id + "/assign";
     }
 
     @PostMapping("/admin/donors/{id}/delete")
@@ -168,5 +136,62 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/donors/unverified";
+    }
+
+    @PostMapping("/admin/requests/{id}/rebroadcast")
+    public String rebroadcast(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            int n = donorInterestService.broadcastForRequest(id);
+            redirectAttributes.addFlashAttribute("successMessage",
+                    n > 0 ? n + " more donor(s) were notified." : "Everyone eligible has already been contacted.");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/requests/" + id + "/assign";
+    }
+
+    @PostMapping("/admin/requests/{id}/close")
+    public String closeRequest(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            requestAssignService.closeRequestEarly(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Request closed with the units donated so far.");
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/requests/" + id + "/assign";
+    }
+
+    // ---- per-donor actions (one assignment = one unit); each returns to that request's page ----
+    @PostMapping("/admin/assignments/{assignmentId}/confirm")
+    public String confirmByPhone(@PathVariable Long assignmentId, RedirectAttributes ra) {
+        return handleAssignmentAction(assignmentId, ra, "Marked as confirmed.", requestAssignService::adminConfirmByPhone);
+    }
+
+    @PostMapping("/admin/assignments/{assignmentId}/release-unresponsive")
+    public String releaseUnresponsive(@PathVariable Long assignmentId, RedirectAttributes ra) {
+        return handleAssignmentAction(assignmentId, ra, "Donor released. That unit is open again.", requestAssignService::markUnresponsive);
+    }
+
+    @PostMapping("/admin/assignments/{assignmentId}/cancel")
+    public String cancelAssignment(@PathVariable Long assignmentId, RedirectAttributes ra) {
+        return handleAssignmentAction(assignmentId, ra, "Assignment cancelled. That unit is open again.", requestAssignService::cancelAssignment);
+    }
+
+    @PostMapping("/admin/assignments/{assignmentId}/complete-donation")
+    public String completeDonation(@PathVariable Long assignmentId, RedirectAttributes ra) {
+        return handleAssignmentAction(assignmentId, ra, "Donation recorded.", donationHistoryService::completeDonation);
+    }
+
+    private String handleAssignmentAction(Long assignmentId, RedirectAttributes ra, String okMessage,
+                                          java.util.function.Consumer<Long> action) {
+        Long requestId = null;
+        try {
+            requestId = requestAssignService.getRequestIdOfAssignment(assignmentId);
+            action.accept(assignmentId);
+            ra.addFlashAttribute("successMessage", okMessage);
+        } catch (InvalidOperationException | ResourceNotFoundException e) {
+            ra.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return requestId == null ? "redirect:/admin/requests" : "redirect:/admin/requests/" + requestId + "/assign";
     }
 }

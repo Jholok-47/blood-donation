@@ -15,9 +15,15 @@
             <td th:text="${n.type}"></td>
             <td th:text="${n.createdAt}"></td>
             <td>
-                <form th:if="${!n.read}" th:action="@{/donor/notifications/{id}/read(id=${n.id})}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-sm btn-outline-secondary">Mark as read</button>
-                </form>
+                <div class="d-flex gap-1">
+                    <a th:if="${n.type.name() == 'REQUEST_BROADCAST'}" th:href="@{/donor/requests}"
+                       class="btn btn-sm btn-danger">Respond</a>
+                    <a th:if="${n.type.name() == 'ASSIGNMENT'}" th:href="@{/donor/assignments}"
+                       class="btn btn-sm btn-outline-danger">View assignment</a>
+                    <form th:if="${!n.read}" th:action="@{/donor/notifications/{id}/read(id=${n.id})}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Mark as read</button>
+                    </form>
+                </div>
             </td>
         </tr>
         </tbody>

@@ -42,11 +42,13 @@
         <tr>
             <th>Patient</th>
             <th>Blood Group</th>
-            <th>Quantity</th>
+            <th>Units needed</th>
             <th>Urgency</th>
             <th>District</th>
             <th>Status</th>
-            <th>Assigned Donor</th>
+            <th>Progress</th>
+            <th>Interested</th>
+            <th>Assigned donors</th>
             <th>Submitted</th>
             <th>Actions</th>
         </tr>
@@ -59,7 +61,26 @@
             <td th:text="${req.urgency}"></td>
             <td th:text="${req.district}"></td>
             <td th:text="${req.status}"></td>
-            <td th:text="${assignedDonorNames.get(req.id)}"></td>
+
+            <!-- donated / assigned / needed -->
+            <td th:with="p=${progressByRequestId.get(req.id)}">
+            <span th:if="${p != null}"
+                  th:text="${p.completed} + ' donated, ' + ${p.assigned} + ' assigned of ' + ${p.required}"></span>
+            </td>
+
+            <!-- donors who accepted the open call -->
+            <td th:text="${interestedCounts.get(req.id) ?: 0}"></td>
+
+            <!-- one line per assigned donor, with confirmation state -->
+            <td>
+                <div th:each="a : ${assignmentsByRequestId.get(req.id)}">
+                    <span th:text="${a.donor.fullName}"></span>
+                    <span th:if="${a.respondedAt == null and a.escalatedAt != null}" class="badge text-bg-danger">Not confirmed</span>
+                    <span th:if="${a.respondedAt == null and a.escalatedAt == null}" class="badge text-bg-warning">Awaiting confirmation</span>
+                    <span th:if="${a.respondedAt != null}" class="badge text-bg-success">Confirmed</span>
+                </div>
+            </td>
+
             <td th:text="${#temporals.format(req.createdAt, 'dd MMM yyyy HH:mm')}"></td>
             <td>
                 <div th:if="${req.status.name() == 'PENDING'}">
@@ -70,31 +91,13 @@
                         <button type="submit" class="btn btn-sm btn-danger">Reject</button>
                     </form>
                 </div>
-                <!-- link/button on each row so admin can reach the assign page -->
-                <a th:if="${req.status.name() == 'APPROVED'}"
+                <!-- one entry point: the page where the admin assigns donors, marks donations, releases, cancels -->
+                <a th:if="${req.status.name() == 'APPROVED' or req.status.name() == 'ASSIGNED'}"
                    th:href="@{/admin/requests/{id}/assign(id=${req.id})}"
-                   class="btn btn-sm btn-primary">Assign Donor</a>
-                <a th:if="${req.status.name() == 'ASSIGNED'}"
+                   class="btn btn-sm btn-danger">Select donors</a>
+                <a th:if="${req.status.name() == 'FULFILLED'}"
                    th:href="@{/admin/requests/{id}/assign(id=${req.id})}"
-                   class="btn btn-sm btn-warning">Reassign</a>
-                <!-- Module 6: Donation history (button to close an assignment) -->
-                <form th:if="${req.status.name() == 'ASSIGNED'}"
-                      th:action="@{/admin/requests/{id}/complete-donation(id=${req.id})}"
-                      method="post" class="d-inline">
-                    <button type="submit" class="btn btn-sm btn-success"
-                            onclick="return confirm('Confirm this donation has been completed?');">
-                        Complete Donation
-                    </button>
-                </form>
-                <!-- Cancel current assignment, revert request to Approved — no new donor chosen -->
-                <form th:if="${req.status.name() == 'ASSIGNED'}"
-                      th:action="@{/admin/requests/{id}/cancel-assignment(id=${req.id})}"
-                      method="post" class="d-inline">
-                    <button type="submit" class="btn btn-sm btn-secondary"
-                            onclick="return confirm('Cancel this assignment and revert the request to Approved?');">
-                        Cancel Assignment
-                    </button>
-                </form>
+                   class="btn btn-sm btn-outline-secondary">View donors</a>
             </td>
         </tr>
         </tbody>

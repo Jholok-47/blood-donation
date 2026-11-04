@@ -1,5 +1,6 @@
 package com.lifelink.blood_donation.Entities;
 
+import com.lifelink.blood_donation.Entities.Enums.AssignEndReason;
 import com.lifelink.blood_donation.Entities.Enums.AssignStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "request_assigns")
 public class RequestAssign extends BaseEntity {
+    /** Set by the scheduler when the donor did not confirm within the urgency window. */
+    private LocalDateTime escalatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "blood_request_id", nullable = false)
@@ -37,6 +40,10 @@ public class RequestAssign extends BaseEntity {
     private LocalDateTime respondedAt;  // when donor accepted/declined
 
     private LocalDateTime completedAt; // when donation actually happened
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private AssignEndReason endReason;
 
     // NOTE: "only one ACTIVE RequestAssign per BloodRequest at a time" is
     // enforced in the service layer (Module 5), not by a DB constraint,

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!--
+  Goal: placeholder quick-link buttons for every role's dashboard (until the Module 18 navigation bar).
+  Include with: <div th:replace="~{fragments/quick-links :: adminQuickLinks}"></div>
+  NOTE: adjust the two profile URLs if your real paths differ.
+-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="adminQuickLinks" class="d-flex flex-wrap gap-2">
+    <a th:href="@{/admin/requests}" class="btn btn-danger">Blood requests</a>
+    <a th:href="@{/admin/donors/unverified}" class="btn btn-outline-danger">Unverified donors</a>
+    <a th:href="@{/search/donors}" class="btn btn-outline-secondary">Search donors</a>
+    <form th:action="@{/logout}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-dark">Log out</button>
+    </form>
+</div>
+
+<div th:fragment="donorQuickLinks(openCount, unreadCount)" class="d-flex flex-wrap gap-2">
+    <a th:href="@{/donor/requests}" class="btn btn-danger">
+        Open requests
+        <span th:if="${openCount != null and openCount > 0}" class="badge text-bg-light ms-1" th:text="${openCount}"></span>
+    </a>
+    <a th:href="@{/donor/assignments}" class="btn btn-outline-danger">My assignments</a>
+    <a th:href="@{/donor/donations}" class="btn btn-outline-danger">My donations</a>
+    <a th:href="@{/donor/notifications}" class="btn btn-outline-secondary">
+        Notifications
+        <span th:if="${unreadCount != null and unreadCount > 0}" class="badge text-bg-danger ms-1" th:text="${unreadCount}"></span>
+    </a>
+    <a th:href="@{/donor/profile}" class="btn btn-outline-secondary">My profile</a>
+    <form th:action="@{/logout}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-dark">Log out</button>
+    </form>
+</div>
+
+<div th:fragment="patientQuickLinks" class="d-flex flex-wrap gap-2">
+    <a th:href="@{/patient/requests/new}" class="btn btn-danger">New blood request</a>
+    <a th:href="@{/patient/requests}" class="btn btn-outline-danger">My requests</a>
+    <a th:href="@{/patient/profile}" class="btn btn-outline-secondary">My profile</a>
+    <form th:action="@{/logout}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-dark">Log out</button>
+    </form>
+</div>
+
+</body>
+</html>

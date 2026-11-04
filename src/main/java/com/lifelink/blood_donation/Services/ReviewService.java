@@ -78,12 +78,32 @@ public class ReviewService {
 
     /** bloodRequestId -> review state, for the "Review" column on My Requests. */
     @Transactional(readOnly = true)
-    public Map<Long, ReviewableDonationDto> getReviewStateByRequestId(Long patientId) {
-        return loadStates(patientId).stream()
-                .collect(Collectors.toMap(
-                        ReviewableDonationDto::getBloodRequestId,
-                        Function.identity(),
-                        (a, b) -> a));
+    public Map<Long, List<ReviewableDonationDto>> getReviewStatesByRequestId(Long patientId) {
+        List<DonationHistory> donations = donationHistoryRepository.findByPatientIdOrderByDonationDateDesc(patientId);
+        if (donations.isEmpty()) return Map.of();
+        Map<Long, Review> reviews = reviewRepository
+                .findByDonationHistoryIdIn(donations.stream().map(DonationHistory::getId).toList()).stream()
+                .collect(Collectors.toMap(r -> r.getDonationHistory().getId(), r -> r));
+        LocalDate today = LocalDate.now();
+        Map<Long, List<ReviewableDonationDto>> result = new LinkedHashMap<>();
+        for (DonationHistory d : donations) {
+            Review review = reviews.get(d.getId());
+            boolean reviewed = review != null;
+            boolean inWindow = !today.isAfter(d.getDonationDate().plusDays(reviewWindowDays));
+            result.computeIfAbsent(d.getBloodRequest().getId(), k -> new ArrayList<>()).add(
+                    ReviewableDonationDto.builder()
+                            .donationHistoryId(d.getId())
+                            .bloodRequestId(d.getBloodRequest().getId())
+                            .donorName(d.getDonor().getFullName())
+                            .bloodGroup(d.getBloodRequest().getBloodGroup())      // VERIFY DTO field type
+                            .donationDate(d.getDonationDate())
+                            .reviewed(reviewed)
+                            .rating(reviewed ? review.getRating() : null)
+                            .comment(reviewed ? review.getComment() : null)
+                            .canReview(!reviewed && inWindow)
+                            .build());
+        }
+        return result;
     }
 
     // ---------- Donor: read ----------

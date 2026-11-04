@@ -28,49 +28,36 @@ public class DonationHistoryService {
     private final RequestAssignRepository requestAssignRepository;
     private final DonationHistoryRepository donationHistoryRepository;
     private final UserRepository userRepository;
+    private final RequestProgressService progressService;
 
-    /**
-     * Admin-triggered: marks the active assignment as COMPLETED, writes a DonationHistory
-     * record, moves the request to FULFILLED, and updates the donor's lastDonationDate
-     * so isEligibleToDonate() starts enforcing the 3-month rule.
-     */
     @Transactional
-    public void completeDonation(Long bloodRequestId) {
-        BloodRequest request = bloodRequestRepository.findById(bloodRequestId)
-                .orElseThrow(() -> new ResourceNotFoundException("Blood request not found"));
-
-        if (request.getStatus() != RequestStatus.ASSIGNED) {
-            throw new InvalidOperationException("Only ASSIGNED requests can be marked as completed");
+    public DonationHistory completeDonation(Long assignmentId) {
+        RequestAssign assignment = requestAssignRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+        if (assignment.getStatus() != AssignStatus.ACTIVE) {
+            throw new InvalidOperationException("Only an active assignment can be marked as donated.");
         }
-
-        RequestAssign activeAssign = requestAssignRepository
-                .findByBloodRequestIdAndStatus(bloodRequestId, AssignStatus.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException("No active assignment found for this request"));
-
+        BloodRequest bloodRequest = assignment.getBloodRequest();
         LocalDateTime now = LocalDateTime.now();
-        LocalDate today = LocalDate.now();
 
-        activeAssign.setStatus(AssignStatus.COMPLETED);
-        activeAssign.setCompletedAt(now);
-        requestAssignRepository.save(activeAssign);
+        assignment.setStatus(AssignStatus.COMPLETED);
+        assignment.setCompletedAt(now);
+        if (assignment.getRespondedAt() == null) {
+            assignment.setRespondedAt(now);                 // stops the "not confirmed" flag
+        }
+        requestAssignRepository.save(assignment);
 
-        User donor = activeAssign.getDonor();
+        DonationHistory history = donationHistoryRepository.save(DonationHistory.builder()
+                .donor(assignment.getDonor())
+                .patient(bloodRequest.getPatient())
+                .bloodRequest(bloodRequest)
+                .requestAssign(assignment)
+                .donationDate(LocalDate.now())
+                .quantity(1)                                // one donor = one unit (VERIFY quantity type)
+                .build());
 
-        DonationHistory history = DonationHistory.builder()
-                .donor(donor)
-                .patient(request.getPatient())
-                .bloodRequest(request)
-                .requestAssign(activeAssign)
-                .donationDate(today)
-                .quantity(request.getQuantity())
-                .build();
-        donationHistoryRepository.save(history);
-
-        request.setStatus(RequestStatus.FULFILLED);
-        bloodRequestRepository.save(request);
-
-        donor.setLastDonationDate(today);
-        userRepository.save(donor);
+        progressService.refreshStatus(bloodRequest);         // FULFILLED when the last unit is donated
+        return history;
     }
 
     public List<DonationHistory> getMyDonationHistory(Long donorId) {

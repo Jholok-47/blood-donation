@@ -1,10 +1,12 @@
 package com.lifelink.blood_donation.Controllers;
 
 import com.lifelink.blood_donation.DTO.BloodRequestCreateDto;
+import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.Enums.BloodGroup;
 import com.lifelink.blood_donation.Entities.Enums.UrgencyLevel;
 import com.lifelink.blood_donation.Security.UserPrincipal;
 import com.lifelink.blood_donation.Services.BloodRequestService;
+import com.lifelink.blood_donation.Services.RequestProgressService;
 import com.lifelink.blood_donation.Services.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,8 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/patient/requests")
 @RequiredArgsConstructor
@@ -22,6 +26,7 @@ public class BloodRequestController {
 
     private final BloodRequestService bloodRequestService;
     private final ReviewService reviewService;   // NEW (Module 15)
+    private final RequestProgressService progressService;
 
     @GetMapping("/new")
     public String showCreateForm(Model model) {
@@ -50,10 +55,13 @@ public class BloodRequestController {
 
     @GetMapping
     public String myRequests(@AuthenticationPrincipal UserPrincipal principal, Model model) {
-        Long patientId = principal.getUser().getId();   // captured once, reused below
-        model.addAttribute("requests", bloodRequestService.getMyRequests(patientId));
-        model.addAttribute("reviewStates", reviewService.getReviewStateByRequestId(patientId));   // NEW
-        model.addAttribute("pendingReviews", reviewService.getPendingReviews(patientId));         // NEW
+        Long patientId = principal.getUser().getId();
+        List<BloodRequest> requests = bloodRequestService.getMyRequests(patientId);
+
+        model.addAttribute("requests", requests);
+        model.addAttribute("reviewStates", reviewService.getReviewStatesByRequestId(patientId));
+        model.addAttribute("pendingReviews", reviewService.getPendingReviews(patientId));
+        model.addAttribute("progressByRequestId", progressService.getProgressByRequestId(requests));
         return "patient/my-requests";
     }
 }

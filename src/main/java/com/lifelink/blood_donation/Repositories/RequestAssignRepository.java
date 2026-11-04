@@ -1,17 +1,19 @@
 package com.lifelink.blood_donation.Repositories;
 
+import com.lifelink.blood_donation.Entities.Enums.AssignEndReason;
 import com.lifelink.blood_donation.Entities.Enums.AssignStatus;
 import com.lifelink.blood_donation.Entities.RequestAssign;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface RequestAssignRepository extends JpaRepository<RequestAssign, Long> {
 
-    // Finds the current ACTIVE assignment for a request — used to enforce "one active assignment at a time"
-    Optional<RequestAssign> findByBloodRequestIdAndStatus(Long bloodRequestId, AssignStatus status);
+    /*// Finds the current ACTIVE assignment for a request — used to enforce "one active assignment at a time"
+    Optional<RequestAssign> findByBloodRequestIdAndStatus(Long bloodRequestId, AssignStatus status);*/
 
     // Donor's "my assignments" view, most recent first
     List<RequestAssign> findByDonorIdOrderByCreatedAtDesc(Long donorId);
@@ -25,9 +27,13 @@ public interface RequestAssignRepository extends JpaRepository<RequestAssign, Lo
 
     List<RequestAssign> findAllByBloodRequestIdAndStatus(Long bloodRequestId, AssignStatus status);
 
-    List<RequestAssign> findAllByBloodRequestIdAndStatusIn(Long bloodRequestId, List<AssignStatus> statuses);
+    List<RequestAssign> findAllByBloodRequestIdAndStatusIn(Long bloodRequestId, Collection<AssignStatus> statuses);
 
-    List<RequestAssign> findByBloodRequestIdInAndStatusIn(List<Long> bloodRequestIds, List<AssignStatus> statuses);
+    List<RequestAssign> findByBloodRequestIdInAndStatusIn(Collection<Long> bloodRequestIds, Collection<AssignStatus> statuses);
 
     boolean existsByDonorId(Long donorId);
+
+    long countByDonorIdAndEndReason(Long donorId, AssignEndReason endReason);
+    long countByStatusAndRespondedAtIsNullAndEscalatedAtIsNotNull(AssignStatus status);
+    long countByBloodRequestIdAndStatus(Long bloodRequestId, AssignStatus status);     // multi-donor progress
 }

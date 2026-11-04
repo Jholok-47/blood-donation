@@ -1,6 +1,5 @@
 package com.lifelink.blood_donation.Entities.Enums;
 
 public enum NotificationType {
-    ASSIGNMENT,
-    CASCADE_REASSIGNED
+    ASSIGNMENT, CASCADE_REASSIGNED, REQUEST_BROADCAST
 }

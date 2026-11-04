@@ -52,11 +52,11 @@
                     <div class="text-danger small" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
                 </div>
 
-                <div class="mb-3" id="lastDonationDateGroup" style="display:none;">
+                <!--<div class="mb-3" id="lastDonationDateGroup" style="display:none;">
                     <label class="form-label">Last Donation Date (optional)</label>
-                    <input type="date" class="form-control" th:field="*{lastDonationDate}">
+                    &lt;!&ndash; <input type="date" class="form-control" th:field="*{lastDonationDate}"> &ndash;&gt;
                     <small class="text-muted">Leave blank if you've never donated, or don't remember.</small>
-                </div>
+                </div>-->
 
                 <div class="mb-3">
                     <label class="form-label">Your Location</label>
@@ -72,12 +72,5 @@
 
 <div th:replace="~{fragments/maps-loader :: mapsLoader(${mapsApiKey})}"></div>
 
-<script>
-    function toggleDonorFields() {
-        const role = document.getElementById('roleSelect').value;
-        document.getElementById('lastDonationDateGroup').style.display = (role === 'DONOR') ? 'block' : 'none';
-    }
-    document.addEventListener('DOMContentLoaded', toggleDonorFields);
-</script>
 </body>
 </html>

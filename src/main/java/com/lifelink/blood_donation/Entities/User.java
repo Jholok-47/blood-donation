@@ -52,10 +52,6 @@ public class User extends BaseEntity {
     @Builder.Default
     private boolean verified = false;
 
-    // Denormalized convenience field, updated when a DonationHistory row
-    // is created for this donor. Used for the 3-month eligibility check.
-    private LocalDate lastDonationDate;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider authProvider;
@@ -70,12 +66,4 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     private boolean emailVerified = false;
-
-    // Convenience method for Module 6's eligibility logic
-    @Transient
-    public boolean isEligibleToDonate() {
-        if (lastDonationDate == null) return true;
-        return lastDonationDate.plusMonths(3).isBefore(LocalDate.now())
-                || lastDonationDate.plusMonths(3).isEqual(LocalDate.now());
-    }
 }

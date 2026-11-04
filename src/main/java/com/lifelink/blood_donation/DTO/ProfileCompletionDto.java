@@ -29,6 +29,4 @@ public class ProfileCompletionDto {
 
     @NotNull(message = "Please pick your location on the map")
     private Double longitude;
-
-    private LocalDate lastDonationDate; // optional, donor-only
 }
