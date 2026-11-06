@@ -139,12 +139,17 @@
                 Call them first to confirm they are free and fit to donate; the hospital's screening has the final word.
                 Score = 40% proximity + 35% reliability + 25% rating.
             </div>
+            <div class="alert alert-info py-2" th:if="${mlAvailable}">
+                AI ranking active (model <span th:text="${mlModelVersion}"></span>) — order = 60% rule score + 40% AI completion chance.
+            </div>
+            <div class="alert alert-secondary py-2" th:unless="${mlAvailable}">AI service offline — showing rule-based ranking only.</div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle bg-white">
                     <thead>
                     <tr>
                         <th></th><th>#</th><th>Donor</th><th>Blood</th><th>District</th><th>Phone</th>
                         <th>Proximity</th><th>Reliability</th><th>Rating</th><th>Score</th><th>Accepted</th>
+                        <th>AI completion chance</th><th>Final score</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -160,6 +165,14 @@
                         <td th:text="${#numbers.formatDecimal(r.score.ratingScore, 1, 0)}">0</td>
                         <td><strong th:text="${#numbers.formatDecimal(r.score.totalScore, 1, 1)}">0.0</strong></td>
                         <td th:text="${#temporals.format(r.respondedAt, 'dd MMM HH:mm')}">time</td>
+                        <td th:with="ml=${mlScores.get(r.donor.id)}">
+                            <span th:if="${ml != null}" th:text="${#numbers.formatDecimal(ml.probability * 100, 1, 0)} + '%'"></span>
+                            <span th:if="${ml == null}" class="text-muted">–</span>
+                        </td>
+                        <td th:with="ml=${mlScores.get(r.donor.id)}">
+                            <span th:if="${ml != null}" th:text="${#numbers.formatDecimal(ml.finalScore, 1, 1)}"></span>
+                            <span th:if="${ml == null}" class="text-muted">–</span>
+                        </td>
                     </tr>
                     </tbody>
                 </table>

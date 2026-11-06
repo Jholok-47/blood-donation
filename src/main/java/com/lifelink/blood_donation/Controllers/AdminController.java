@@ -1,6 +1,7 @@
 package com.lifelink.blood_donation.Controllers;
 
 import com.lifelink.blood_donation.Config.GoogleMapsProperties;
+import com.lifelink.blood_donation.DTO.MlRankingResult;
 import com.lifelink.blood_donation.DTO.RankedDonorDto;
 import com.lifelink.blood_donation.Entities.BloodRequest;
 import com.lifelink.blood_donation.Entities.Enums.RequestStatus;
@@ -33,6 +34,7 @@ public class AdminController {
     private final GoogleMapsProperties googleMapsProperties;
     private final DonorInterestService donorInterestService;
     private final RequestProgressService progressService;
+    private final MlRankingService mlRankingService;
 
     //Module 3: User profile management for Admins
     @GetMapping("/admin/donors/unverified")
@@ -99,7 +101,7 @@ public class AdminController {
 
     // Module 5: Donor assignment management for Admins
 
-    @GetMapping("/admin/requests/{id}/assign")
+    /*@GetMapping("/admin/requests/{id}/assign")
     public String assignDonorPage(@PathVariable Long id, Model model) {
         BloodRequest bloodRequest = bloodRequestService.getRequestById(id);
         List<RankedDonorDto> rankedDonors = requestAssignService.getRankedInterestedDonors(id);
@@ -108,8 +110,37 @@ public class AdminController {
         model.addAttribute("assignments", requestAssignService.findAssignmentsForRequest(id));
         model.addAttribute("rankedDonors", rankedDonors);
         model.addAttribute("interestSummary", donorInterestService.getSummary(id));
-        // KEEP: your existing lines that add the map attributes (markers, API key, config).
-        //       toDonorMapMarkers(...) must now receive the interested donors (pass what it accepted before).
+        return "admin/assign-donor";
+    }*/
+
+    @GetMapping("/admin/requests/{id}/assign")
+    public String assignDonorPage(@PathVariable Long id, Model model) {
+        BloodRequest bloodRequest = bloodRequestService.getRequestById(id);
+        List<RankedDonorDto> ruleRanked = requestAssignService.getRankedInterestedDonors(id);
+
+        // B2: AI re-ranking (falls back to rule order if the service is down)
+        MlRankingResult ml = mlRankingService.rank(bloodRequest, ruleRanked);
+        List<RankedDonorDto> rankedDonors = ml.getRanked();
+
+        model.addAttribute("bloodRequest", bloodRequest);
+        model.addAttribute("progress", progressService.getProgress(bloodRequest));
+        model.addAttribute("assignments", requestAssignService.findAssignmentsForRequest(id));
+        model.addAttribute("rankedDonors", rankedDonors);
+        model.addAttribute("interestSummary", donorInterestService.getSummary(id));
+        model.addAttribute("mlScores", ml.getScores());
+        model.addAttribute("mlAvailable", ml.isModelAvailable());
+        model.addAttribute("mlModelVersion", ml.getModelVersion());
+
+        // MAP: restore your original lines here. The donors list is built from the ranked donors:
+        //List<User> interestedDonors = rankedDonors.stream().map(RankedDonorDto::getDonor).toList();
+        model.addAttribute("mapsApiKey", googleMapsProperties.getApiKey());
+        model.addAttribute("donorMarkers", requestAssignService.toDonorMapMarkers(rankedDonors));
+        model.addAttribute("requestLat", bloodRequest.getPatient().getLatitude());
+        model.addAttribute("requestLng", bloodRequest.getPatient().getLongitude());
+        model.addAttribute("defaultLat", googleMapsProperties.getDefaultLat());
+        model.addAttribute("defaultLng", googleMapsProperties.getDefaultLng());
+        model.addAttribute("defaultZoom", googleMapsProperties.getDefaultZoom());
+
         return "admin/assign-donor";
     }
 
