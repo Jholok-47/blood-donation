@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Users - LifeLink Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body class="admin-body">
+<nav th:replace="~{fragments/admin-nav :: adminNav('users')}"></nav>
+
+<div class="container pb-5">
+  <div class="page-head mb-3">
+    <h1>Users</h1>
+    <div class="sub"><span th:text="${users.totalElements}">0</span> accounts match the current filters.</div>
+  </div>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <form class="panel panel-body mb-3 row g-2 align-items-end" method="get" th:action="@{/admin/users}">
+    <div class="col-md-4">
+      <label class="form-label small mb-1" for="q">Search</label>
+      <input type="text" class="form-control form-control-sm" id="q" name="q" th:value="${q}" placeholder="Name, email or phone">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="role">Role</label>
+      <select class="form-select form-select-sm" id="role" name="role">
+        <option value="">All</option>
+        <option th:each="r : ${roles}" th:value="${r}" th:text="${r}" th:selected="${r == role}"></option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="verified">Verification</label>
+      <select class="form-select form-select-sm" id="verified" name="verified">
+        <option value="">All</option>
+        <option value="true" th:selected="${verified == true}">Verified</option>
+        <option value="false" th:selected="${verified == false}">Unverified</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="active">Account</label>
+      <select class="form-select form-select-sm" id="active" name="active">
+        <option value="">All</option>
+        <option value="true" th:selected="${active == true}">Active</option>
+        <option value="false" th:selected="${active == false}">Suspended</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="flag">Data check</label>
+      <select class="form-select form-select-sm" id="flag" name="flag">
+        <option value="">None</option>
+        <option value="missingLocation" th:selected="${flag == 'missingLocation'}">Donors without coordinates</option>
+        <option value="incompleteProfile" th:selected="${flag == 'incompleteProfile'}">Profile not completed</option>
+      </select>
+    </div>
+    <div class="col-12 d-flex gap-2">
+      <button class="btn btn-crimson btn-sm" type="submit">Filter</button>
+      <a class="btn btn-outline-secondary btn-sm" th:href="@{/admin/users}">Reset</a>
+    </div>
+  </form>
+
+  <div class="panel">
+    <div th:if="${users.empty}" class="empty-state">No users match these filters.</div>
+    <div class="table-responsive" th:unless="${users.empty}">
+      <table class="table table-admin table-hover">
+        <thead><tr><th>User</th><th>Role</th><th>Blood group</th><th>District</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="u : ${users.content}">
+          <td>
+            <div class="fw-semibold" th:text="${u.fullName}">Name</div>
+            <div class="muted small" th:text="${u.email}">email</div>
+          </td>
+          <td th:text="${u.role != null} ? ${u.role} : 'Not chosen'">DONOR</td>
+          <td th:text="${u.bloodGroup != null} ? ${u.bloodGroup.name().replace('_POSITIVE','+').replace('_NEGATIVE','-')} : '-'">A+</td>
+          <td th:text="${u.district != null} ? ${u.district} : '-'">Dhaka</td>
+          <td>
+            <span th:if="${!u.active}" class="tag tag-bad">Suspended</span>
+            <span th:if="${!u.profileCompleted}" class="tag tag-warn">Profile incomplete</span>
+            <span th:if="${u.role != null and u.role.name() == 'DONOR' and u.verified}" class="tag tag-ok">Verified</span>
+            <span th:if="${u.role != null and u.role.name() == 'DONOR' and !u.verified}" class="tag tag-warn">Unverified</span>
+            <span th:if="${u.role != null and u.role.name() == 'DONOR' and !u.available}" class="tag">Unavailable</span>
+          </td>
+          <td class="muted" th:text="${#temporals.format(u.createdAt,'dd MMM yyyy')}">01 Jan 2026</td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/users/{id}(id=${u.id})}">View</a></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <nav class="mt-3 d-flex justify-content-between align-items-center" th:if="${users.totalPages > 1}">
+    <span class="muted small">Page <span th:text="${users.number + 1}">1</span> of <span th:text="${users.totalPages}">1</span></span>
+    <div class="btn-group btn-group-sm">
+      <a class="btn btn-outline-secondary" th:classappend="${users.first} ? 'disabled'"
+         th:href="@{/admin/users(q=${q},role=${role},verified=${verified},active=${active},flag=${flag},page=${users.number - 1})}">Previous</a>
+      <a class="btn btn-outline-secondary" th:classappend="${users.last} ? 'disabled'"
+         th:href="@{/admin/users(q=${q},role=${role},verified=${verified},active=${active},flag=${flag},page=${users.number + 1})}">Next</a>
+    </div>
+  </nav>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

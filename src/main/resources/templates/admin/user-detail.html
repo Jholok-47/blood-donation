@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User - LifeLink Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body class="admin-body">
+<nav th:replace="~{fragments/admin-nav :: adminNav('users')}"></nav>
+
+<div class="container pb-5" th:with="u=${detail.user}">
+  <div class="mb-2"><a th:href="@{/admin/users}" class="small text-decoration-none">&larr; All users</a></div>
+  <div class="page-head mb-3 d-flex flex-wrap justify-content-between align-items-end gap-2">
+    <div>
+      <h1 th:text="${u.fullName}">Name</h1>
+      <div class="sub">
+        <span th:text="${u.role != null} ? ${u.role} : 'No role chosen'">DONOR</span>
+        &middot; joined <span th:text="${#temporals.format(u.createdAt,'dd MMM yyyy')}">01 Jan 2026</span>
+      </div>
+    </div>
+    <div>
+      <span th:if="${!u.active}" class="tag tag-bad">Suspended</span>
+      <span th:if="${u.active}" class="tag tag-ok">Active</span>
+    </div>
+  </div>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="panel mb-3">
+        <h2 class="panel-title">Profile</h2>
+        <table class="table table-admin">
+          <tbody>
+          <tr><td class="muted">Email</td><td th:text="${u.email}">-</td></tr>
+          <tr><td class="muted">Phone</td><td th:text="${u.phone != null} ? ${u.phone} : '-'">-</td></tr>
+          <tr><td class="muted">Sign-in</td><td th:text="${u.authProvider}">LOCAL</td></tr>
+          <tr><td class="muted">Blood group</td>
+            <td th:text="${u.bloodGroup != null} ? ${u.bloodGroup.name().replace('_POSITIVE','+').replace('_NEGATIVE','-')} : '-'">-</td></tr>
+          <tr><td class="muted">District</td><td th:text="${u.district != null} ? ${u.district} : '-'">-</td></tr>
+          <tr><td class="muted">Map coordinates</td>
+            <td><span th:if="${u.latitude != null and u.longitude != null}" class="tag tag-ok">Set</span>
+              <span th:if="${u.latitude == null or u.longitude == null}" class="tag tag-warn">Missing</span></td></tr>
+          <tr><td class="muted">Profile completed</td><td th:text="${u.profileCompleted} ? 'Yes' : 'No'">Yes</td></tr>
+          <tr th:if="${u.role != null and u.role.name() == 'DONOR'}"><td class="muted">Verified</td><td th:text="${u.verified} ? 'Yes' : 'No'">Yes</td></tr>
+          <tr th:if="${u.role != null and u.role.name() == 'DONOR'}"><td class="muted">Available to donate</td><td th:text="${u.available} ? 'Yes' : 'No'">Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- account control -->
+      <div class="panel" th:if="${u.role == null or u.role.name() != 'ADMIN'}">
+        <h2 class="panel-title">Account control</h2>
+        <div class="panel-body">
+          <form th:if="${u.active and u.id != currentAdminId}" th:action="@{/admin/users/{id}/suspend(id=${u.id})}" method="post"
+                onsubmit="return confirm('Suspend this account? The user will be signed out and cannot log in until reactivated.');">
+            <label class="form-label small" for="reason">Reason (recorded in the audit log)</label>
+            <textarea class="form-control form-control-sm mb-2" id="reason" name="reason" rows="2" maxlength="300" required></textarea>
+            <button type="submit" class="btn btn-sm btn-danger">Suspend account</button>
+            <div class="definition mt-2">Blocked while a donor has an active assignment or a patient has an open request.</div>
+          </form>
+          <form th:if="${!u.active}" th:action="@{/admin/users/{id}/reactivate(id=${u.id})}" method="post"
+                onsubmit="return confirm('Reactivate this account?');">
+            <p class="small muted">Reactivating also switches a donor's availability back on.</p>
+            <button type="submit" class="btn btn-sm btn-crimson">Reactivate account</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <!-- donor activity -->
+      <div th:if="${u.role != null and u.role.name() == 'DONOR'}">
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-3"><div class="kpi is-ok"><div class="label">Donations</div><div class="value" th:text="${detail.donations}">0</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi"><div class="label">Average rating</div>
+            <div class="value"><span th:if="${detail.reviewCount > 0}" th:text="${detail.averageRating}">0</span>
+              <span th:if="${detail.reviewCount == 0}" class="muted">-</span></div>
+            <div class="note"><span th:text="${detail.reviewCount}">0</span> reviews</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi" th:classappend="${detail.assignmentsWithdrew + detail.assignmentsUnresponsive > 0} ? 'is-warning'">
+            <div class="label">Let-downs</div>
+            <div class="value" th:text="${detail.assignmentsWithdrew + detail.assignmentsUnresponsive}">0</div>
+            <div class="note"><span th:text="${detail.assignmentsWithdrew}">0</span> withdrew, <span th:text="${detail.assignmentsUnresponsive}">0</span> silent</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi"><div class="label">Active now</div><div class="value" th:text="${detail.assignmentsActive}">0</div>
+            <div class="note"><span th:text="${detail.assignmentsAdminCancelled}">0</span> cancelled by admin</div></div></div>
+        </div>
+        <div class="panel mb-3">
+          <h2 class="panel-title">Open-call responses</h2>
+          <table class="table table-admin"><tbody>
+            <tr><td>Calls received</td><td class="num" th:text="${detail.callsReceived}">0</td></tr>
+            <tr><td>Accepted</td><td class="num" th:text="${detail.callsAccepted}">0</td></tr>
+            <tr><td>Declined</td><td class="num" th:text="${detail.callsDeclined}">0</td></tr>
+            <tr><td>No answer</td><td class="num" th:text="${detail.callsNoAnswer}">0</td></tr>
+          </tbody></table>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Recent assignments</h2>
+          <div th:if="${#lists.isEmpty(detail.recentAssignments)}" class="empty-state">No assignments yet.</div>
+          <table class="table table-admin" th:unless="${#lists.isEmpty(detail.recentAssignments)}">
+            <thead><tr><th>Request</th><th>Assigned</th><th>Outcome</th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${detail.recentAssignments}">
+              <td>#<span th:text="${a.bloodRequest.id}">1</span></td>
+              <td class="muted" th:text="${a.assignedAt != null} ? ${#temporals.format(a.assignedAt,'dd MMM yyyy HH:mm')} : '-'">-</td>
+              <td><span class="tag" th:text="${a.endReason != null} ? ${a.endReason} : ${a.status}">COMPLETED</span></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- patient activity -->
+      <div th:if="${u.role != null and u.role.name() == 'PATIENT'}">
+        <div class="panel mb-3">
+          <h2 class="panel-title">Requests by status (<span th:text="${detail.requestsTotal}">0</span> total)</h2>
+          <div th:if="${#maps.isEmpty(detail.requestsByStatus)}" class="empty-state">No requests yet.</div>
+          <table class="table table-admin" th:unless="${#maps.isEmpty(detail.requestsByStatus)}"><tbody>
+            <tr th:each="e : ${detail.requestsByStatus}"><td th:text="${e.key}">APPROVED</td><td class="num" th:text="${e.value}">1</td></tr>
+          </tbody></table>
+        </div>
+        <div class="panel" th:unless="${#lists.isEmpty(detail.recentRequests)}">
+          <h2 class="panel-title">Recent requests</h2>
+          <table class="table table-admin">
+            <thead><tr><th>#</th><th>Blood group</th><th class="num">Units</th><th>Urgency</th><th>Status</th><th>Created</th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${detail.recentRequests}">
+              <td th:text="${r.id}">1</td>
+              <td th:text="${r.bloodGroup.name().replace('_POSITIVE','+').replace('_NEGATIVE','-')}">A+</td>
+              <td class="num" th:text="${r.quantity}">1</td>
+              <td th:text="${r.urgency}">HIGH</td>
+              <td><span class="tag" th:text="${r.status}">PENDING</span></td>
+              <td class="muted" th:text="${#temporals.format(r.createdAt,'dd MMM yyyy')}">-</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div th:if="${u.role == null}" class="panel"><div class="empty-state">This account has not completed its profile, so it has no activity.</div></div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overview - LifeLink Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body class="admin-body">
+<nav th:replace="~{fragments/admin-nav :: adminNav('overview')}"></nav>
+
+<div class="container pb-5">
+  <div class="page-head mb-4">
+    <h1>Overview</h1>
+    <div class="sub">Live state of the platform and the last 30 days.</div>
+  </div>
+
+  <!-- health + workload -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+      <a th:href="@{/admin/issues}" class="text-decoration-none text-reset">
+        <div class="kpi" th:classappend="${overview.criticalIssues > 0} ? 'is-critical' : (${overview.warningIssues > 0} ? 'is-warning' : 'is-ok')">
+          <div class="label">System issues</div>
+          <div class="value" th:text="${overview.criticalIssues + overview.warningIssues}">0</div>
+          <div class="note"><span th:text="${overview.criticalIssues}">0</span> critical, <span th:text="${overview.warningIssues}">0</span> warnings</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-lg-3">
+      <a th:href="@{/admin/requests}" class="text-decoration-none text-reset">
+        <div class="kpi" th:classappend="${overview.pendingRequests > 0} ? 'is-warning'">
+          <div class="label">Awaiting your approval</div>
+          <div class="value" th:text="${overview.pendingRequests}">0</div>
+          <div class="note">Pending requests</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi is-info">
+        <div class="label">Requests in progress</div>
+        <div class="value" th:text="${overview.openRequests + overview.assignedRequests}">0</div>
+        <div class="note"><span th:text="${overview.openRequests}">0</span> seeking donors, <span th:text="${overview.assignedRequests}">0</span> donors assigned</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi" th:classappend="${overview.unconfirmedAssignments > 0} ? 'is-critical' : 'is-ok'">
+        <div class="label">Donors not confirmed</div>
+        <div class="value" th:text="${overview.unconfirmedAssignments}">0</div>
+        <div class="note"><span th:text="${overview.activeAssignments}">0</span> active assignments</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- performance 30d -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="kpi">
+        <div class="label">Donations, last 30 days</div>
+        <div class="value" th:text="${overview.donations30d}">0</div>
+        <div class="note">Previous 30 days: <span th:text="${overview.donationsPrev30d}">0</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi">
+        <div class="label">Requests, last 30 days</div>
+        <div class="value" th:text="${overview.requests30d}">0</div>
+        <div class="note"><span th:text="${overview.fulfilled30d}">0</span> fulfilled</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi">
+        <div class="label">Fulfilment rate, 30 days</div>
+        <div class="value"><span th:text="${#numbers.formatDecimal(overview.fulfilmentRate30d, 1, 0)}">0</span>%</div>
+        <div class="note">Fulfilled of all non-rejected requests</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi" th:classappend="${overview.availableDonors == 0} ? 'is-critical'">
+        <div class="label">Donors who can respond now</div>
+        <div class="value" th:text="${overview.availableDonors}">0</div>
+        <div class="note">Verified, available, not suspended</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- top issues -->
+    <div class="col-lg-8">
+      <div class="panel h-100">
+        <h2 class="panel-title d-flex justify-content-between">
+          <span>Needs attention</span>
+          <a th:href="@{/admin/issues}" class="small text-decoration-none">All issues</a>
+        </h2>
+        <div th:if="${#lists.isEmpty(topIssues)}" class="empty-state">
+          <div class="big">No problems detected</div>
+          <div>All integrity and flow checks passed.</div>
+        </div>
+        <table class="table table-admin" th:unless="${#lists.isEmpty(topIssues)}">
+          <tbody>
+          <tr th:each="i : ${topIssues}">
+            <td style="width:1%"><span class="sev" th:classappend="'sev-' + ${i.severity}" th:text="${i.severity}">CRITICAL</span></td>
+            <td>
+              <div class="fw-semibold" th:text="${i.title}">Title</div>
+              <div class="muted small" th:text="${i.detail}">Detail</div>
+            </td>
+            <td class="num" th:text="${i.count}">1</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- people + system -->
+    <div class="col-lg-4">
+      <div class="panel mb-3">
+        <h2 class="panel-title">People</h2>
+        <table class="table table-admin">
+          <tbody>
+          <tr><td>Verified donors</td><td class="num" th:text="${overview.verifiedDonors}">0</td></tr>
+          <tr><td>Donors awaiting verification</td>
+            <td class="num"><a th:href="@{/admin/donors/unverified}" th:text="${overview.unverifiedDonors}">0</a></td></tr>
+          <tr><td>Patients</td><td class="num" th:text="${overview.patients}">0</td></tr>
+          <tr><td>Suspended accounts</td>
+            <td class="num"><a th:href="@{/admin/users(active=false)}" th:text="${overview.suspendedUsers}">0</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Components</h2>
+        <table class="table table-admin">
+          <tbody>
+          <tr><td>Application and database</td><td class="num"><span class="tag tag-ok">Running</span></td></tr>
+          <tr>
+            <td>AI ranking service</td>
+            <td class="num">
+              <span th:if="${!overview.mlEnabled}" class="tag">Disabled</span>
+              <span th:if="${overview.mlEnabled and overview.mlReachable}" class="tag tag-ok">Online</span>
+              <span th:if="${overview.mlEnabled and !overview.mlReachable}" class="tag tag-warn">Offline</span>
+            </td>
+          </tr>
+          <tr th:if="${overview.mlModelVersion != null}"><td>Model version</td><td class="num" th:text="${overview.mlModelVersion}">v1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

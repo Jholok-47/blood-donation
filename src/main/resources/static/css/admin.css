@@ -1,0 +1,70 @@
+/* LifeLink admin console - shared styles for the M17 pages */
+:root {
+  --ll-ink: #1d232b;
+  --ll-ink-soft: #2b333d;
+  --ll-crimson: #b3162d;
+  --ll-bg: #f4f5f7;
+  --ll-text: #20262d;
+  --ll-muted: #6b7480;
+  --ll-line: #e1e4e8;
+  --ll-critical: #b3162d;
+  --ll-warning: #a8690f;
+  --ll-info: #2f6396;
+  --ll-ok: #2a7550;
+}
+body.admin-body { background: var(--ll-bg); color: var(--ll-text);
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+
+/* navigation */
+.admin-nav { background: var(--ll-ink); border-bottom: 3px solid var(--ll-crimson); }
+.admin-nav .navbar-brand { font-weight: 600; letter-spacing: .2px; }
+.admin-nav .brand-mark { color: var(--ll-crimson); }
+.admin-nav .nav-link { color: #b8c0ca; font-size: .92rem; padding: .85rem .8rem; }
+.admin-nav .nav-link:hover { color: #fff; }
+.admin-nav .nav-link.active { color: #fff; box-shadow: inset 0 -3px 0 var(--ll-crimson); }
+.admin-nav .nav-user { color: #b8c0ca; font-size: .88rem; }
+
+/* page header */
+.page-head h1 { font-size: 1.5rem; font-weight: 650; margin: 0; }
+.page-head .sub { color: var(--ll-muted); font-size: .92rem; }
+
+/* panels and KPI tiles */
+.panel { background: #fff; border: 1px solid var(--ll-line); border-radius: 6px; }
+.panel-title { font-size: .95rem; font-weight: 650; padding: .85rem 1.1rem; border-bottom: 1px solid var(--ll-line); margin: 0; }
+.panel-body { padding: 1.1rem; }
+.kpi { background: #fff; border: 1px solid var(--ll-line); border-left: 4px solid var(--ll-line);
+  border-radius: 6px; padding: .9rem 1.1rem; height: 100%; }
+.kpi .label { color: var(--ll-muted); font-size: .82rem; }
+.kpi .value { font-size: 1.85rem; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.kpi .note { color: var(--ll-muted); font-size: .8rem; }
+.kpi.is-critical { border-left-color: var(--ll-critical); }
+.kpi.is-warning { border-left-color: var(--ll-warning); }
+.kpi.is-ok { border-left-color: var(--ll-ok); }
+.kpi.is-info { border-left-color: var(--ll-info); }
+.kpi.is-critical .value { color: var(--ll-critical); }
+
+/* severity and status badges */
+.sev { display: inline-block; font-size: .75rem; font-weight: 600; padding: .2rem .55rem; border-radius: 3px; }
+.sev-CRITICAL { background: #fbe9ec; color: var(--ll-critical); }
+.sev-WARNING { background: #fbf1de; color: var(--ll-warning); }
+.sev-INFO { background: #e6eef7; color: var(--ll-info); }
+.tag { display: inline-block; font-size: .75rem; padding: .15rem .5rem; border-radius: 3px; background: #eceff2; color: #44505c; margin-right: .2rem; }
+.tag-ok { background: #e3f1ea; color: var(--ll-ok); }
+.tag-bad { background: #fbe9ec; color: var(--ll-critical); }
+.tag-warn { background: #fbf1de; color: var(--ll-warning); }
+
+/* tables */
+.table-admin { margin: 0; font-size: .9rem; }
+.table-admin thead th { font-size: .8rem; font-weight: 600; color: var(--ll-muted); background: #fafbfc;
+  border-bottom: 1px solid var(--ll-line); white-space: nowrap; }
+.table-admin td, .table-admin th { vertical-align: middle; padding: .65rem .9rem; }
+.table-admin td.num, .table-admin th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.muted { color: var(--ll-muted); }
+.btn-crimson { background: var(--ll-crimson); border-color: var(--ll-crimson); color: #fff; }
+.btn-crimson:hover { background: #961225; border-color: #961225; color: #fff; }
+.definition { color: var(--ll-muted); font-size: .8rem; }
+.chart-box { position: relative; height: 260px; }
+.empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--ll-muted); }
+.empty-state .big { font-size: 1.05rem; color: var(--ll-ok); font-weight: 600; }
+
+@media (max-width: 576px) { .kpi .value { font-size: 1.5rem; } }

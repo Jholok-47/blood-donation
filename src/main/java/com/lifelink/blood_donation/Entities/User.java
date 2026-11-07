@@ -48,6 +48,10 @@ public class User extends BaseEntity {
     @Builder.Default
     private boolean available = true;
 
+    @Column(name = "active", nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean active = true;
+
     // Admin verifies donor profile before it's publicly visible (func req #3)
     @Builder.Default
     private boolean verified = false;

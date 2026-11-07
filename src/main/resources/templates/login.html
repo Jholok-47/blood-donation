@@ -14,6 +14,7 @@
             <div th:if="${param.registered}" class="alert alert-success">Registration successful — please log in.</div>
             <div th:if="${param.error}" class="alert alert-danger">Invalid email or password.</div>
             <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${param.suspended}" class="alert alert-danger">This account has been suspended. Please contact the administrator.</div>
 
             <form th:action="@{/login}" method="post">
                 <div class="mb-3">
